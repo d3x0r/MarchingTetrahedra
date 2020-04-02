@@ -9,7 +9,7 @@
 
 
 ![graphic Layout](tesslation-5tets.png)
-![graphic Layout](tesselation-5tets-plane.png)
+![Alternate notes, for plane meshing](tesselation-5tets-plane.png)
 
 See also
 
@@ -69,6 +69,12 @@ then just always build from an outside point; but depending on ordering of
 the vertices that can be tricky; I ordered mine so every other point is
 inverted, and a mod4 can be applied to wrap the point indexing, reducing it
 to just 1 if case , and its sub-cases...
+
+## Inflation
+
+![inflation](src/MarchingTet-Scaling.png )
+
+The point cloud can have a scalar applied to inside/outside values to 'inflate' the mesh...
 
 
 ## Earlier notes building on Diamond lattice framework
