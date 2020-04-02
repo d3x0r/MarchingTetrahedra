@@ -17,7 +17,7 @@ Testing framework : http://mikolalysenko.github.io/Isosurface/
 
 https://github.com/mikolalysenko/isosurface.git
 
-Temporary Testing framework: https://d3x0r.org/javascript/marching-tetrahedron
+Temporary Testing framework: https://d3x0r.org/javascript/marching-tetrahedron (low reliability)
 
 `Marching Tetrahedra 3 (DLC-Plane)` mode slices a cloud a plane at a time, generating a single calculation for all shared points.  Duduces the point count.
 
