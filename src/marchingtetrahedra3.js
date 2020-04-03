@@ -375,7 +375,7 @@ function meshOne(data, dims) {
 								crosses[baseHere+l] = crosses_[baseHere+7];
 								break;
 							default: 
-								debugger;
+								//debugger;
 							}
 							bits[x+y*dim0] |= crosses[baseHere+l]; // set any 1 bit is set here.
 							continue;
@@ -506,6 +506,8 @@ function meshOne(data, dims) {
 						const ci=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][0][2]] ;
 
 						if( smoothShade ) {
+							//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
+							// suggests using the angle as a scalar of the normal.
 							faces.push( f = new THREE.Face3( points[ai]
 											,points[bi]
 										,points[ci] 
@@ -514,7 +516,7 @@ function meshOne(data, dims) {
 							const vA = vertices[f.a];
 							const vB = vertices[f.b];
 							const vC = vertices[f.c];
-							if( !vA || !vB || !vC ) debugger;
+							//if( !vA || !vB || !vC ) debugger;
 							cb.subVectors(vC, vB);
 							ab.subVectors(vA, vB);
 							cb.cross(ab);
@@ -572,7 +574,7 @@ function meshOne(data, dims) {
 							const vA = vertices[f.a];
 							const vB = vertices[f.b];
 							const vC = vertices[f.c];
-							if( !vA || !vB || !vC ) debugger;
+							//if( !vA || !vB || !vC ) debugger;
 							cb.subVectors(vC, vB);
 							ab.subVectors(vA, vB);
 							cb.cross(ab);
@@ -596,7 +598,7 @@ function meshOne(data, dims) {
 								const vA = vertices[f.a];
 								const vB = vertices[f.b];
 								const vC = vertices[f.c];
-								if( !vA || !vB || !vC ) debugger;
+								//if( !vA || !vB || !vC ) debugger;
 								cb.subVectors(vC, vB);
 								ab.subVectors(vA, vB);
 								cb.cross(ab);
@@ -644,7 +646,7 @@ function meshOne(data, dims) {
 								const vA = vertices[f.a];
 								const vB = vertices[f.b];
 								const vC = vertices[f.c];
-								if( !vA || !vB || !vC ) debugger;
+								//if( !vA || !vB || !vC ) debugger;
 								cb.subVectors(vC, vB);
 								ab.subVectors(vA, vB);
 								cb.cross(ab);
