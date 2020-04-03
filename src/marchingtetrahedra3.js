@@ -102,6 +102,7 @@ const linesEvenMin = [ [0,2],[0,4],[4,6],[0,6],  [0,1],[0,3],[0,5]  , [4,5],[5,6
 const linesMin = [linesEvenMin,linesOddMin];
 
 const cellOrigin = [0,0,0];
+const patchOffset = [0,0,0];
 const vertToDataOrig = [
 		[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
 		[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
@@ -115,13 +116,71 @@ const vertToData = [
         // update base index to resolved data cloud offset
 
 
-var MarchingTetrahedra3 = (function() {
+var MarchingTetrahedra3 = function(data,dims) {
 
-return function(data, dims) {
+	var vertices = []
+	, faces = [];
+	var stitching = false;
+		if( !stitching ){
+			//for( var n = 0; n < dims[0]*dims[1]*dims[2]; n++ ) data[n] = Math.sin(n/40);//Math.random() - 0.2;
+			//for( var z = 0; z < dims[2]; z++ ) for( var y = 0; y < dims[1]; y++ ) for( var x = 0; x < dims[0]; x++ ) {
+			//	data[x+y*dims[0]+z*dims[0]*dims[1]] = Math.sin(x/5)*5 - Math.cos( y/10 )*5 + (10-z);
+			//}
+		}
+	patchOffset[0] = 0;
+	patchOffset[1] = 0;
+	patchOffset[2] = 0;
+
+	meshOne( data,dims );
+	return { vertices: vertices, faces: faces };
+
+function meshOne(data, dims) {
    
-   var vertices = []
-    , faces = [];
+	function stitchSpace(empty) {
+		if( stitching ) return;
+		stitching = true;
+		const ranges = [
+							[[-1,-1,-1],[dims[0],dims[1],0]],
+							[[-1,-1,dims[2]-1],[dims[0],dims[1],dims[2]]],
+							[[-1,-1,0],[dims[0],0,dims[2]-1]],
+							[[-1,dims[1]-1,0],[dims[0],dims[1],dims[2]-1]],
 
+							[[-1,0,0],[0,dims[1]-1,dims[2]-1]],
+							[[dims[0]-1,0,0],[dims[0],dims[1]-1,dims[2]-1]],
+		]
+		var cloud = [];
+		for( let r = 0; r < ranges.length; r++ ) {
+			cloud.length = 0;
+			for( let z = ranges[r][0][2]; z <= ranges[r][1][2]; z++ ){
+				for( let y = ranges[r][0][1]; y <= ranges[r][1][1]; y++ ){
+					for( let x = ranges[r][0][0]; x <= ranges[r][1][0]; x++ ){
+						if( ( x >= 0 && x < dims[0] )
+							&& ( y >= 0 && y < dims[1] ) 
+							&& ( z >= 0 && z < dims[2] ) 
+							)
+							cloud.push( data[x+y*dims[0]+z*dims[0]*dims[1]] );
+						else {
+							//cloud.push(empty?-1:500);
+
+							// this is a full stretch//
+							//cloud.push(500);
+							// this is not so great; inside surface only
+							// triangles fail.
+							//cloud.push(-500);
+							
+							cloud.push(2.3 * Math.random());
+							//cloud.push(-2.3 * Math.random());
+						}
+					}
+				}
+			}
+			patchOffset[0] = ranges[r][0][0];
+			patchOffset[1] = ranges[r][0][1];
+			patchOffset[2] = ranges[r][0][2];
+			meshOne( cloud, [ranges[r][1][0]-ranges[r][0][0]+1,ranges[r][1][1]-ranges[r][0][1]+1,ranges[r][1][2]-ranges[r][0][2]+1] );
+		}
+		stitching = false;
+	}
 
 	// values input to this are in 2 planes for lower and upper values
 
@@ -182,13 +241,13 @@ return function(data, dims) {
 		let odd = 0;
 		let zOdd = z & 1;
 		//if( z !== 5 ) return;
-		cellOrigin[2] = z-0.5;
+		cellOrigin[2] = patchOffset[2] + z-0.5;
 		for( var y = 0; y < dim1; y++ ) {
-			cellOrigin[1] = y-0.5; 
+			cellOrigin[1] = patchOffset[1] + y-0.5; 
 			for( var x = 0; x < dim0; x++ ) {
 				odd = (( x + y ) &1) ^ zOdd;
 	        
-				cellOrigin[0] = x-0.5;
+				cellOrigin[0] = patchOffset[0] + x-0.5;
 	        
 				const baseHere = (x+0 + y*dim0)*9;
 				const baseOffset = x+0 + y*dim0 + z * dim0*dim1;
@@ -287,9 +346,10 @@ return function(data, dims) {
 				if( !bits[x+y*dim0] ) {
 					if( x >= (dim0-2))continue;
 					if( y >= (dim1-2))continue;
+					if( z >= (dim1-2))continue;
 
-					if( !bits[(x+1)+y*dim0] && !bits[(x)+(y+1)*dim0]) {
-						continue;
+					if( !bits[(x+1)+y*dim0] && !bits[(x)+(y+1)*dim0]&& !bits[(x)+(y)*dim0+dim0*dim1]) {
+						//continue;
 					}
 				
 				}
@@ -458,11 +518,11 @@ return function(data, dims) {
         
         
 	}
-	
-	return { vertices: vertices, faces: faces };
+	//stitchSpace( false );	
 }       
-})();   
-        
+
+}
+
         
 if("undefined" != typeof exports) {
 	exports.mesher = MarchingTetrahedra3;

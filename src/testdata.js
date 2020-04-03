@@ -17,13 +17,29 @@ function createTestData() {
       for(var i=0; i<3; ++i) {
         res[i] = 2 + Math.ceil((dims[i][1] - dims[i][0]) / dims[i][2]);
       }
-      var volume = new Float32Array(res[0] * res[1] * res[2])
+      var volume = new Float32Array(res[0] * (res[1]+1) * (res[2]+2))
         , n = 0;
-      for(var k=0, z=dims[2][0]-dims[2][2]; k<res[2]; ++k, z+=dims[2][2])
-      for(var j=0, y=dims[1][0]-dims[1][2]; j<res[1]; ++j, y+=dims[1][2])
+        for(var k=0; k < 1; k++ )
+      for(var j=-1, y=dims[1][0]-dims[1][2]; j<res[1]; ++j, y+=dims[1][2])
       for(var i=0, x=dims[0][0]-dims[0][2]; i<res[0]; ++i, x+=dims[0][2], ++n) {
-        volume[n] = f(x,y,z);
+        volume[n] = 2.3 * Math.random();
       }
+      for(var k=0, z=dims[2][0]-dims[2][2]; k<res[2]; ++k, z+=dims[2][2])
+      for(var j=-1, y=dims[1][0]-dims[1][2]; j<res[1]; ++j, y+=dims[1][2])
+      for(var i=0, x=dims[0][0]-dims[0][2]; i<res[0]; ++i, x+=dims[0][2], ++n) {
+        if( j < 0 )
+          volume[n] = 2.3 * Math.random();
+        else
+          volume[n] = f(x,y,z);
+      }
+      for(var k=0; k < 1; k++ )
+      for(var j=-1, y=dims[1][0]-dims[1][2]; j<res[1]; ++j, y+=dims[1][2])
+      for(var i=0, x=dims[0][0]-dims[0][2]; i<res[0]; ++i, x+=dims[0][2], ++n) {
+        volume[n] = 2.3 * Math.random();
+      }
+      res[0] = res[0];
+      res[1] = res[1] + 1;
+      res[2] = res[2] + 2;
       return {data: volume, dims:res};
     });
   }
@@ -36,7 +52,23 @@ function createTestData() {
       return x*x + y*y + z*z - 1.0;
     }
   );
-  
+
+  result['dots'] = makeVolume(
+    [[-4.0, 4.0, 1],
+     [-4.0, 4.0, 1],
+     [-4.0, 6.0, 1]],
+    function(x,y,z) {
+      //console.log( "duh? ", x, y, z );
+      if( ( Math.abs(x) % 2 == 1 )
+      && ( (z < 0 ) ? ( Math.abs(y) % 2 == 1 ) : ( Math.abs(y) % 2 == 0 ) )
+      && ( ( Math.abs(x) % 2 == 0 ) ? ( Math.abs(z) % 2 == 1 ) : ( Math.abs(z) % 2 == 1 ) ))
+        return -2.3 * Math.random();
+      else
+        return 2.3 * Math.random();
+    }
+  );
+
+
   result['Torus'] = makeVolume(
     [[-2.0, 2.0, 0.2],
      [-2.0, 2.0, 0.2],
