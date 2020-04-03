@@ -122,16 +122,22 @@ return function(data, dims) {
         case 0x0C:
           faces.push([ 
                 interp(T[1], T[2])
-              , interp(T[1], T[3])
               , interp(T[0], T[3])
               , interp(T[0], T[2]) ]);
+          faces.push([ 
+                interp(T[1], T[2])
+              , interp(T[1], T[3])
+              , interp(T[0], T[3]) ]);
         break;
         case 0x03:
           faces.push([ 
                 interp(T[1], T[2])
-              , interp(T[0], T[2])
               , interp(T[0], T[3])
               , interp(T[1], T[3]) ]);
+              faces.push([ 
+                interp(T[1], T[2])
+              , interp(T[0], T[2])
+              , interp(T[0], T[3]) ]);
         break;
         case 0x04:
           faces.push([ 
@@ -148,30 +154,42 @@ return function(data, dims) {
         case 0x05:
           faces.push([ 
                 interp(T[0], T[1])
-              , interp(T[1], T[2])
               , interp(T[2], T[3])
               , interp(T[0], T[3]) ]);
+          faces.push([ 
+                interp(T[0], T[1])
+              , interp(T[1], T[2])
+              , interp(T[2], T[3]) ]);
         break;
         case 0x0A:
           faces.push([ 
                 interp(T[0], T[1])
-              , interp(T[0], T[3])
               , interp(T[2], T[3])
               , interp(T[1], T[2]) ]);
+          faces.push([ 
+                interp(T[0], T[1])
+              , interp(T[0], T[3])
+              , interp(T[2], T[3]) ]);
         break;
         case 0x06:
           faces.push([ 
                 interp(T[2], T[3])
-              , interp(T[0], T[2])
               , interp(T[0], T[1])
               , interp(T[1], T[3]) ]);
+              faces.push([ 
+                interp(T[2], T[3])
+              , interp(T[0], T[2])
+              , interp(T[0], T[1]) ]);
         break;
         case 0x09:
           faces.push([ 
                 interp(T[2], T[3])
-              , interp(T[1], T[3])
               , interp(T[0], T[1])
               , interp(T[0], T[2]) ]);
+          faces.push([ 
+                interp(T[2], T[3])
+              , interp(T[1], T[3])
+              , interp(T[0], T[1]) ]);
         break;
         case 0x07:
           faces.push([ 

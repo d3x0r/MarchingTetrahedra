@@ -182,9 +182,11 @@ return function(data, dims) {
         
         //Remember to flip orientation depending on the sign of the corner.
         if(mask & 1) {
-          faces.push([buffer[m], buffer[m-du], buffer[m-du-dv], buffer[m-dv]]);
+          faces.push([buffer[m], buffer[m-du], buffer[m-du-dv]]);
+          faces.push([buffer[m], buffer[m-du-dv], buffer[m-dv]]);
         } else {
-          faces.push([buffer[m], buffer[m-dv], buffer[m-du-dv], buffer[m-du]]);
+          faces.push([buffer[m], buffer[m-dv], buffer[m-du-dv]]);
+          faces.push([buffer[m], buffer[m-du-dv], buffer[m-du]]);
         }
       }
     }
