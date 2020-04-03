@@ -80,89 +80,136 @@ this is the vertex references on the right, and which 'vert N' applies.
 
 */
 
-// static working buffers
-var sizes = 0;
-const pointHolder = [null,null];
-const crossHolder = [null,null];
-var bits = null;
-const highDef = true;
 
-const geom = [
-	[0,0,0],  // bottom layer
-        [1,0,0],
-        [0,1,0],
-        [1,1,0],
-        [0,0,1],  // 5 top layer
-        [1,0,1],   // 6
-        [0,1,1],   // 7
-        [1,1,1],   // 8
-]
+var MarchingTetrahedra3 = (function() {
+	// static working buffers
+	var sizes = 0;
+	const pointHolder = [null,null];
+	const normalHolder = [[],[]];
+	const crossHolder = [null,null];
+	var bits = null;
+	const highDef = false;
 
-const linesOddMin =  [ [0,2],[0,4],[4,6],[2,4],  [0,1],[1,2],[1,4]  , [4,5],[4,7] ];
-const linesEvenMin = [ [0,2],[0,4],[4,6],[0,6],  [0,1],[0,3],[0,5]  , [4,5],[5,6] ];
-const linesMin = [linesEvenMin,linesOddMin];
+	const geom = [
+		[0,0,0],  // bottom layer
+			[1,0,0],
+			[0,1,0],
+			[1,1,0],
+			[0,0,1],  // 5 top layer
+			[1,0,1],   // 6
+			[0,1,1],   // 7
+			[1,1,1],   // 8
+	]
 
-const cellOrigin = [0,0,0];
-const patchOffset = [0,0,0];
-const vertToDataOrig = [
-		[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
-		[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
-];
-        // index with [odd] [tet_of_cube] [0-3 vertex]
-        // result is point data rectangular offset... (until modified)
-const vertToData = [
-		[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
-		[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
-];
-        // update base index to resolved data cloud offset
+	const linesOddMin =  [ [0,2],[0,4],[4,6],[2,4],  [0,1],[1,2],[1,4]  , [4,5],[4,7] ];
+	const linesEvenMin = [ [0,2],[0,4],[4,6],[0,6],  [0,1],[0,3],[0,5]  , [4,5],[5,6] ];
+	const linesMin = [linesEvenMin,linesOddMin];
 
-var MarchingTetrahedra3 = function(data,dims) {
+	const cellOrigin = [0,0,0];
+	const patchOffset = [0,0,0];
+	const vertToDataOrig = [
+			[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
+			[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
+	];
+			// index with [odd] [tet_of_cube] [0-3 vertex]
+			// result is point data rectangular offset... (until modified)
+	const vertToData = [	// updated base index to resolved data cloud offset
+			[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
+			[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
+	];
 
-	var vertices = []
-	, faces = [];
+
+		
+// indexed with [invert][face][p] [0-3]	
+	const facePointIndexes = [
+			[
+				[[0,1,2]],
+				[[0,1,4],[0,4,5]],
+				[[0,3,4],[0,4,2]],
+				[[0,5,3]],
+				[[1,2,5],[1,5,3]],
+				[[1,3,4]],
+				[[2,4,5]]
+			],
+			[
+				[[1,0,2]],
+				[[1,0,4],[4,0,5]],
+				[[3,0,4],[4,0,2]],
+				[[5,0,3]],
+				[[2,1,5],[5,1,3]],
+				[[3,1,4]],
+				[[4,2,5]]
+			]
+	];
+
+	const normals = [
+		[
+			[
+				[[ ]]
+			]
+		],
+		[
+			[
+				[ [ -1, -2, -1 ] ],
+			]
+		]
+	]
+
+		return function(data,dims, opts) {
+
+	let cb = new THREE.Vector3();
+	let ab = new THREE.Vector3()
+
+	let a1t = new THREE.Vector3();
+	let a2t = new THREE.Vector3();
+	let a3t = new THREE.Vector3();
+
+	var vertices = opts.vertices || []
+	, faces = opts.faces || [];
+	var smoothShade = opts.smoothShade || false;
 	var newData = [];
 	if( highDef ){
 		let n = 0;
-	for( var z = 0; z < (dims[2]*2-1); z++ ){
-		if( z & 1 )
-			n -= dims[1]*dims[0];
-		for( var y = 0; y < (dims[1]*2-1); y++ ) {
-			if( y & 1 )
-				n -= dims[0];
-			for( var x = 0; x < dims[0]; x++ ){
-				if( z & 1 ){
-					if( y & 1 ){
-						newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
-							data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] )/4 );
-						if( x < dims[0]-1 )
+		for( var z = 0; z < (dims[2]*2-1); z++ ){
+			if( z & 1 )
+				n -= dims[1]*dims[0];
+			for( var y = 0; y < (dims[1]*2-1); y++ ) {
+				if( y & 1 )
+					n -= dims[0];
+				for( var x = 0; x < dims[0]; x++ ){
+					if( z & 1 ){
+						if( y & 1 ){
 							newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
-											data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] +
-											data[n+1] + data[n+1+dims[0]*dims[1]] +
-											data[n+1+dims[0]]+ data[n+1+dims[0]+dims[0]*dims[1]] 
-								)/8 );
-					}else {
-						newData.push( ( data[n] + data[n+dims[0]*dims[1]] )/2 );
-						if( x < dims[0]-1 )
-							newData.push( ( data[n] + data[n+dims[0]*dims[1]] +  data[n+1] + data[n+1+dims[0]*dims[1]]  )/4 );
+								data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] )/4 );
+							if( x < dims[0]-1 )
+								newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
+												data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] +
+												data[n+1] + data[n+1+dims[0]*dims[1]] +
+												data[n+1+dims[0]]+ data[n+1+dims[0]+dims[0]*dims[1]] 
+									)/8 );
+						}else {
+							newData.push( ( data[n] + data[n+dims[0]*dims[1]] )/2 );
+							if( x < dims[0]-1 )
+								newData.push( ( data[n] + data[n+dims[0]*dims[1]] +  data[n+1] + data[n+1+dims[0]*dims[1]]  )/4 );
+						}
 					}
-				}
-				else {
-					if( y & 1 ){
-						newData.push( ( data[n] + data[n+dims[0]] )/2 );
-						if( x < dims[0]-1 )
-							newData.push( ( data[n] + data[n+1] + data[n+dims[0]] + data[n+dims[0]*dims[1]] )/4 );
-					}else {
-						newData.push( data[n] );
-						if( x < dims[0]-1 )
-							newData.push( ( data[n] + data[n+1] )/2 );
+					else {
+						if( y & 1 ){
+							newData.push( ( data[n] + data[n+dims[0]] )/2 );
+							if( x < dims[0]-1 )
+								newData.push( ( data[n] + data[n+1] + data[n+dims[0]] + data[n+dims[0]*dims[1]] )/4 );
+						}else {
+							newData.push( data[n] );
+							if( x < dims[0]-1 )
+								newData.push( ( data[n] + data[n+1] )/2 );
+						}
 					}
+					n++;
 				}
-				n++;
 			}
-		}
-}	
-	dims = [dims[0] * 2 - 1, dims[1] * 2 - 1, dims[2] * 2 - 1];
-	data = newData;
+		}	
+		dims = [dims[0] * 2 - 1, dims[1] * 2 - 1, dims[2] * 2 - 1];
+		data = newData;
 	}
 	var stitching = false;
 		if( !stitching ){
@@ -176,8 +223,9 @@ var MarchingTetrahedra3 = function(data,dims) {
 	patchOffset[2] = 0;
 
 	meshOne( data,dims );
-	return { vertices: vertices, faces: faces };
+	return null;//{ vertices: vertices, faces: faces };
 
+	
 function meshOne(data, dims) {
    
 	function stitchSpace(empty) {
@@ -233,6 +281,26 @@ function meshOne(data, dims) {
 	const dim2 = dims[2];
 	const dataOffset = [ 0,1, dim0, 1+dim0, 0 + dim0*dim1,1 + dim0*dim1,dim0 + dim0*dim1, 1+dim0 + dim0*dim1] ;
 
+	// vertex paths 0-1 0-2, 0-3  1-2 2-3 3-1
+	// this is the offset from dataOffset to the related value.
+        //  index with [odd] [tet_of_cube] [0-5 line index]
+        // result is computed point cloud data offset.
+		const edgeToComp = [
+			[ [ (dim0)*9+4, (dim0)*9+1, 0          , (dim0)*9+6 , 3      , 5 ]
+			, [ (1)*9+0    , 1*9+3      , 5          , 1*9+1       , 6      , 4 ]
+			, [ 2          , 7          , 1          , 8           , 6      , 3 ]
+			, [ (dim0)*9+7, 8          , (dim0)*9+6, (1)*9+2     , (1)*9+3, (1+dim0)*9+1 ]
+			, [ 3, 6, 5, 8, (1)*9+3, (dim0)*9+6]
+			],
+	
+			[ [0, 1, 4, 3, 6, 5]
+			, [ (1)*9+0, (1+dim0)*9+1, (dim0)*9 + 4, 1*9+3, (dim0)*9+6, 5 ]
+			, [ (dim0)*9+7, 2, (dim0)*9+1, 8, 3, (dim0)*9+6 ]
+			, [ 8, 7, 6, (1)*9+2, (1)*9+1, (1)*9+3 ]
+			, [ 5, 6, (1)*9+3, 3, 8, (dim0)*9+6 ]
+			],
+		]
+
 	for( let a = 0; a < 2; a++ ) for( let b = 0; b < 5; b++ ) for( let c = 0; c < 4; c++ ) vertToData[a][b][c] = dataOffset[vertToDataOrig[a][b][c]];
 	if( dim0*dim1*9 > sizes ) {
 		sizes = dim0 * dim1 * 9;
@@ -241,31 +309,10 @@ function meshOne(data, dims) {
 		pointHolder[1] = new Uint32Array(sizes);
 		crossHolder[0] = new Uint8Array(sizes);
 		crossHolder[1] = new Uint8Array(sizes);
+		for( let zz = normalHolder[0].length; zz < sizes; zz++ ) normalHolder[0].push( null );
+		for( let zz = normalHolder[1].length; zz < sizes; zz++ ) normalHolder[1].push( null );
 	}
 
-	// vertex paths 0-1 0-2, 0-3  1-2 2-3 3-1
-	// this is the offset from dataOffset to the related value.
-        //  index with [odd] [tet_of_cube] [0-5 line index]
-        // result is computed point cloud data offset.
-	const edgeToComp = [
-		[ [ (dim0)*9+4, (dim0)*9+1, 0          , (dim0)*9+6 , 3      , 5 ]
-		, [ (1)*9+0    , 1*9+3      , 5          , 1*9+1       , 6      , 4 ]
-		, [ 2          , 7          , 1          , 8           , 6      , 3 ]
-		, [ (dim0)*9+7, 8          , (dim0)*9+6, (1)*9+2     , (1)*9+3, (1+dim0)*9+1 ]
-		, [ 3, 6, 5, 8, (1)*9+3, (dim0)*9+6]
-		],
-
-		[ [0, 1, 4, 3, 6, 5]
-		, [ (1)*9+0, (1+dim0)*9+1, (dim0)*9 + 4, 1*9+3, (dim0)*9+6, 5 ]
-		, [ (dim0)*9+7, 2, (dim0)*9+1, 8, 3, (dim0)*9+6 ]
-		, [ 8, 7, 6, (1)*9+2, (1)*9+1, (1)*9+3 ]
-		, [ 5, 6, (1)*9+3, 3, 8, (dim0)*9+6 ]
-		],
-	]
-	let firstSet = false;
-	let firstY = 0;
-	let firstX = 0;
-	
 
 	for( var z = 0; z < dim2-1; z++ ) {
 
@@ -274,10 +321,13 @@ function meshOne(data, dims) {
 		let tmp;
 		tmp = pointHolder[0]; pointHolder[0] = pointHolder[1]; pointHolder[1] = tmp;
 		tmp = crossHolder[0]; crossHolder[0] = crossHolder[1]; crossHolder[1] = tmp;
+		tmp = normalHolder[0]; normalHolder[0] = normalHolder[1]; normalHolder[1] = tmp;
 	        
 		const points_ = pointHolder[1];
 		const crosses_ = crossHolder[1];
+		const normals_ = normalHolder[1];
 		let points = pointHolder[0];//new Array((dim0+1)+(dim1+1)*9);
+		let normals = normalHolder[0];
 		//points.length = 0;
 		let crosses = crossHolder[0];
 		//crosses.length = 0;
@@ -310,14 +360,17 @@ function meshOne(data, dims) {
 						if( !(p0 & 4) && !(p1 & 4) ) {
 							switch(l) {
 							case 0:
+								normals[baseHere+l] = normals_[baseHere+2];
 								points[baseHere+l] = points_[baseHere+2];
 								crosses[baseHere+l] = crosses_[baseHere+2];
 								break;
 							case 5:
+								normals[baseHere+l] = normals_[baseHere+8];
 								points[baseHere+l] = points_[baseHere+8];
 								crosses[baseHere+l] = crosses_[baseHere+8];
 								break;
 							case 4:
+								normals[baseHere+l] = normals_[baseHere+7];
 								points[baseHere+l] = points_[baseHere+7];
 								crosses[baseHere+l] = crosses_[baseHere+7];
 								break;
@@ -354,13 +407,16 @@ function meshOne(data, dims) {
 						//console.log( "x, y is a cross:", (x+y*dim0)*9, crosses.length, l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` );
 						if( e <= 0 ) {
 							(t = -e/(d-e));
-							points[baseHere+l] = (vertices.push([cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t ,cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t, cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t ]),vertices.length-1);
+							points[baseHere+l] = (vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t 
+							       , cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t
+							       , cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t )),vertices.length-1);
 						} else {
 							(t = -d/(e-d));
-							points[baseHere+l] =( vertices.push([cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t 
+							points[baseHere+l] =( vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t 
 									,cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
-									, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t ]),vertices.length-1 );
+									, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t )),vertices.length-1 );
 						}	
+						normals[baseHere+l] = new THREE.Vector3(0,0,0);
 						crosses[baseHere+l] = 1;
 						bits[x+y*dim0] = 1; // set any 1 bit is set here.
 					}
@@ -390,7 +446,7 @@ function meshOne(data, dims) {
 				if( !bits[x+y*dim0] ) {
 					if( x >= (dim0-2))continue;
 					if( y >= (dim1-2))continue;
-					if( z >= (dim1-2))continue;
+					if( z > (dim1-2))continue;
 
 					if( !bits[(x+1)+y*dim0] && !bits[(x)+(y+1)*dim0]&& !bits[(x)+(y)*dim0+dim0*dim1]) {
 						//continue;
@@ -402,158 +458,208 @@ function meshOne(data, dims) {
 				const dataOffset = (x + (y*dim0)) + z*dim1*dim0;
 	        		odd = (( x + y ) &1) ^ zOdd;
 				for( tet = 0; tet < 5; tet++ ) {
+					let f;
+					let invert = 0;
+					let useFace = 0;
 					if( crosses[ baseOffset+edgeToComp[odd][tet][0] ] ) {
 						//console.log( `Output: odd:${odd} tet:${tet} x:${x} y:${y} a:${JSON.stringify(a)}` );
 						if( crosses[ baseOffset+edgeToComp[odd][tet][1] ] ) {
 							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
+								useFace = 1;								
+								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0;
 
-	        						if( data[dataOffset+vertToData[odd][tet][0]] >= 0 ) {
-									faces.push([ points[baseOffset+edgeToComp[odd][tet][1]]
-	        							   ,points[baseOffset+edgeToComp[odd][tet][0]]
-									   ,points[baseOffset+edgeToComp[odd][tet][2]]] );
-								} else {
-									faces.push([ points[baseOffset+edgeToComp[odd][tet][0]]
-									   ,points[baseOffset+edgeToComp[odd][tet][1]]
-									   ,points[baseOffset+edgeToComp[odd][tet][2]]] );
-								}
 							} else {
 								if( crosses[ baseOffset+edgeToComp[odd][tet][4] ] ) {
-									//if( !a[5] ) {
-									//	console.log( "Expected point 5 is missing." );
-	        							//}
-									if( data[dataOffset+vertToData[odd][tet][0]] >= 0 ) {
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][1]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][4]]
-										] );
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][4]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][5]]
-										] );
-									}   else {
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][5]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][4]]
-										] );
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][4]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][1]]
-										] );
-									}
-								} else {
-									console.log( "Expecting point 4 missing" );
+									useFace = 2;
+									invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0 ;
 								}
 							}
 						} else {
 							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
-								//if( a[3] && crosses[ baseOffset+edgeToComp[odd][tet][4] ]/* && !a[5] */ ) {
-									if( data[dataOffset+vertToData[odd][tet][0]] >= 0 )  {
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][3]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][4]]
-										] );								
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][4]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][2]]
-										] );								
-									} else {
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][2]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][4]]
-										] );								
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][4]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-	        								    , points[baseOffset+edgeToComp[odd][tet][3]]
-										] );								
-	        							}
-								//} else {
-								//	console.log( "Failed to have proper intersections..." );
-								//}
-								
+								useFace = 3;
+								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0  ;
 							}else {
-								//if( a[3] && !crosses[ baseOffset+edgeToComp[odd][tet][4] ] && a[5]  ) {
-									if( data[dataOffset+vertToData[odd][tet][1]] >= 0 ) 
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][5]]
-										    , points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][3]]
-										] );
-									else
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][0]]
-										    , points[baseOffset+edgeToComp[odd][tet][5]]
-										    , points[baseOffset+edgeToComp[odd][tet][3]]
-										] );								
-								//} else {
-								//	console.log( "Failed to have proper intersections..." );
-	        						//}
+								useFace = 4;
+								invert = ( data[dataOffset+vertToData[odd][tet][1]] >= 0 )?1:0 
 							}
 						}
 					} else {
 						if( crosses[ baseOffset+edgeToComp[odd][tet][1] ] ) {
 							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
-								//if( !debug_ && ( a[3] && !crosses[ baseOffset+edgeToComp[odd][tet][4] ] && a[5] )  ) {
-	        							if( data[dataOffset+vertToData[odd][tet][0]] >= 0 )  {
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][2]]
-										    , points[baseOffset+edgeToComp[odd][tet][1]]
-										    , points[baseOffset+edgeToComp[odd][tet][5]]
-										] );
-	        								faces.push([ points[baseOffset+edgeToComp[odd][tet][5]]
-										    , points[baseOffset+edgeToComp[odd][tet][1]]
-										    , points[baseOffset+edgeToComp[odd][tet][3]]
-										] );
-									}else{
-			
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][3]]
-	        								    , points[baseOffset+edgeToComp[odd][tet][1]]
-										    , points[baseOffset+edgeToComp[odd][tet][5]]
-										] );								
-										faces.push([ points[baseOffset+edgeToComp[odd][tet][5]]
-										    , points[baseOffset+edgeToComp[odd][tet][1]]
-										    , points[baseOffset+edgeToComp[odd][tet][2]]
-										] );								
-									}
-								//} else {
-								//	console.log( "Failed to have proper intersections..." );
-								//}
+								useFace = 5;
+								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )  ?1:0
 							} else {
-	        						//if( !debug_ && ( a[3] && crosses[ baseOffset+edgeToComp[odd][tet][4] ] && !a[5] )) {
-	        							if( data[dataOffset+vertToData[odd][tet][2]] >= 0 ) 
-										faces.push([points[baseOffset+edgeToComp[odd][tet][3]]
-										    , points[baseOffset+edgeToComp[odd][tet][1]]
-										    , points[baseOffset+edgeToComp[odd][tet][4]]
-										] );
-									else
-										faces.push([points[baseOffset+edgeToComp[odd][tet][1]]
-										    , points[baseOffset+edgeToComp[odd][tet][3]]
-										    , points[baseOffset+edgeToComp[odd][tet][4]]
-										] );
-									
-	        						//} else {
-								//	console.log( "Expecting state mismatch (1)3,4,5 missing" );
-								//}
+								useFace = 6;
+       							invert = ( data[dataOffset+vertToData[odd][tet][2]] >= 0 ) ?1:0
 							}
 						} else {
 							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
-								//if( !debug_ && ( !a[3]  && crosses[ baseOffset+edgeToComp[odd][tet][4] ] && a[5] ) ){
-									if( data[dataOffset+vertToData[odd][tet][3]] >= 0 ) 
-										faces.push([points[baseOffset+edgeToComp[odd][tet][4]]
-										    , points[baseOffset+edgeToComp[odd][tet][2]]
-										    , points[baseOffset+edgeToComp[odd][tet][5]]
-										] );
-									else 
-										faces.push([points[baseOffset+edgeToComp[odd][tet][2]]
-										    , points[baseOffset+edgeToComp[odd][tet][4]]
-										    , points[baseOffset+edgeToComp[odd][tet][5]]
-										] );
-								//} else {
-								//	console.log( "Expecting state mismatch (2)3,4,5 missing" );
-								//}
+								useFace = 7;
+								invert = ( data[dataOffset+vertToData[odd][tet][3]] >= 0 ) ?1:0
 							} else {
-								//if( a[3] || crosses[ baseOffset+edgeToComp[odd][tet][4] ] || a[5] )
-								//	console.log( "Impossible intersection result" );
 							}
 						}
 					}
+					if( useFace-- ) {
+						const ai = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][0][0]];
+						const bi=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][0][1]];
+						const ci=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][0][2]] ;
+
+						if( smoothShade ) {
+							faces.push( f = new THREE.Face3( points[ai]
+											,points[bi]
+										,points[ci] 
+										,[normals[ai],normals[bi],normals[ci]] )
+							);
+							const vA = vertices[f.a];
+							const vB = vertices[f.b];
+							const vC = vertices[f.c];
+							if( !vA || !vB || !vC ) debugger;
+							cb.subVectors(vC, vB);
+							ab.subVectors(vA, vB);
+							cb.cross(ab);
+
+
+							if( cb.length() > 0.001 ){
+								cb.normalize();
+								a1t.subVectors(vC,vB);
+								a2t.subVectors(vA,vB);
+								let angle = 0;
+								if( a1t.length() && a2t.length() )
+									angle = a1t.angleTo( a2t );
+								cb.multiplyScalar(angle);
+								normals[bi].add( cb );
+							} 
+							
+							cb.subVectors(vB, vA);
+							ab.subVectors(vC, vA);
+							cb.cross(ab);
+							
+							if( cb.length() > 0.001 ) {
+								cb.normalize();
+								a1t.subVectors(vB,vA);
+								a2t.subVectors(vC,vA);
+								let angle = 0;
+								if( a1t.length() > 0 && a2t.length()>0 ){
+								angle = a1t.angleTo( a2t );
+								}
+								cb.multiplyScalar(angle);
+									
+								normals[ai].add( cb );
+							}
+
+							cb.subVectors(vA, vC);
+							ab.subVectors(vB, vC);
+							cb.cross(ab);
+							
+							if( cb.length() > 0.001 ) {
+								cb.normalize();
+								a1t.subVectors(vA,vC);
+								a2t.subVectors(vB,vC);
+								let angle = 0;
+								if( a1t.length() > 0 && a2t.length()>0 ){
+								angle = a1t.angleTo( a2t );
+								}
+								cb.multiplyScalar(angle);
+									
+								normals[ci].add( cb );
+							}
+						}else {
+							faces.push( f = new THREE.Face3( points[ai]
+								,points[bi]
+								,points[ci] )
+							);
+							const vA = vertices[f.a];
+							const vB = vertices[f.b];
+							const vC = vertices[f.c];
+							if( !vA || !vB || !vC ) debugger;
+							cb.subVectors(vC, vB);
+							ab.subVectors(vA, vB);
+							cb.cross(ab);
 		
+							if( cb.length() < 0.01 ){
+								cb.subVectors(vB, vA);
+								ab.subVectors(vC, vA);
+								cb.cross(ab);
+							}
+							cb.normalize();
+							f.normal.copy(cb);
+						}
+					
+						// push the second triangle.
+						if( facePointIndexes[invert][useFace][1] )								{
+							const ai = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][1][0]];
+							const bi=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][1][1]];
+							const ci=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][1][2]] ;
+							if( smoothShade ) {
+								faces.push( f = new THREE.Face3(  points[ai],points[bi],points[ci], [normals[ai],normals[bi],normals[ci]] ) );
+								const vA = vertices[f.a];
+								const vB = vertices[f.b];
+								const vC = vertices[f.c];
+								if( !vA || !vB || !vC ) debugger;
+								cb.subVectors(vC, vB);
+								ab.subVectors(vA, vB);
+								cb.cross(ab);
+								if( cb.length() > 0.001 ){
+									cb.normalize();
+									a1t.subVectors(vC,vB);
+									a2t.subVectors(vA,vB);
+									let angle = 0;
+									if( a1t.length() && a2t.length() )
+										angle = a1t.angleTo( a2t );
+									cb.multiplyScalar(angle);
+									normals[bi].add( cb );
+								}
+								
+								cb.subVectors(vB, vA);
+								ab.subVectors(vC, vA);
+								cb.cross(ab);
+								if( cb.length() > 0.001 ){
+									cb.normalize();
+									a1t.subVectors(vB,vA);
+									a2t.subVectors(vC,vA);
+									let angle = 0;
+									if( a1t.length() && a2t.length() )
+										angle = a1t.angleTo( a2t );
+									cb.multiplyScalar(angle);
+									normals[ai].add( cb );
+								}
+
+								cb.subVectors(vA, vC);
+								ab.subVectors(vB, vC);
+								cb.cross(ab);
+								if( cb.length() > 0.001 ){
+									cb.normalize();
+									a1t.subVectors(vA,vC);
+									a2t.subVectors(vB,vC);
+									let angle = 0;
+									if( a1t.length() && a2t.length() )
+										angle = a1t.angleTo( a2t );
+									cb.multiplyScalar(angle);
+
+									normals[ci].add( cb );
+								}
+							}else {
+								faces.push( f = new THREE.Face3(  points[ai],points[bi],points[ci] ) );
+								const vA = vertices[f.a];
+								const vB = vertices[f.b];
+								const vC = vertices[f.c];
+								if( !vA || !vB || !vC ) debugger;
+								cb.subVectors(vC, vB);
+								ab.subVectors(vA, vB);
+								cb.cross(ab);
+			
+								if( cb.length() < 0.01 ){
+									cb.subVectors(vB, vA);
+									ab.subVectors(vC, vA);
+									cb.cross(ab);
+								}
+								cb.normalize();
+								f.normal.copy(cb);
+	
+							}
+						} 
+					}
 				}	
 			}
 		}
@@ -562,11 +668,11 @@ function meshOne(data, dims) {
         
         
 	}
-	//stitchSpace( false );	
+	stitchSpace( false );	
 }       
 
 }
-
+})()
         
 if("undefined" != typeof exports) {
 	exports.mesher = MarchingTetrahedra3;
