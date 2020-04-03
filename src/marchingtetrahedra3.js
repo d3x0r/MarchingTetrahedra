@@ -85,6 +85,7 @@ var sizes = 0;
 const pointHolder = [null,null];
 const crossHolder = [null,null];
 var bits = null;
+const highDef = true;
 
 const geom = [
 	[0,0,0],  // bottom layer
@@ -115,11 +116,54 @@ const vertToData = [
 ];
         // update base index to resolved data cloud offset
 
-
 var MarchingTetrahedra3 = function(data,dims) {
 
 	var vertices = []
 	, faces = [];
+	var newData = [];
+	if( highDef ){
+		let n = 0;
+	for( var z = 0; z < (dims[2]*2-1); z++ ){
+		if( z & 1 )
+			n -= dims[1]*dims[0];
+		for( var y = 0; y < (dims[1]*2-1); y++ ) {
+			if( y & 1 )
+				n -= dims[0];
+			for( var x = 0; x < dims[0]; x++ ){
+				if( z & 1 ){
+					if( y & 1 ){
+						newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
+							data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] )/4 );
+						if( x < dims[0]-1 )
+							newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
+											data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] +
+											data[n+1] + data[n+1+dims[0]*dims[1]] +
+											data[n+1+dims[0]]+ data[n+1+dims[0]+dims[0]*dims[1]] 
+								)/8 );
+					}else {
+						newData.push( ( data[n] + data[n+dims[0]*dims[1]] )/2 );
+						if( x < dims[0]-1 )
+							newData.push( ( data[n] + data[n+dims[0]*dims[1]] +  data[n+1] + data[n+1+dims[0]*dims[1]]  )/4 );
+					}
+				}
+				else {
+					if( y & 1 ){
+						newData.push( ( data[n] + data[n+dims[0]] )/2 );
+						if( x < dims[0]-1 )
+							newData.push( ( data[n] + data[n+1] + data[n+dims[0]] + data[n+dims[0]*dims[1]] )/4 );
+					}else {
+						newData.push( data[n] );
+						if( x < dims[0]-1 )
+							newData.push( ( data[n] + data[n+1] )/2 );
+					}
+				}
+				n++;
+			}
+		}
+}	
+	dims = [dims[0] * 2 - 1, dims[1] * 2 - 1, dims[2] * 2 - 1];
+	data = newData;
+	}
 	var stitching = false;
 		if( !stitching ){
 			//for( var n = 0; n < dims[0]*dims[1]*dims[2]; n++ ) data[n] = Math.sin(n/40);//Math.random() - 0.2;
