@@ -198,15 +198,16 @@
 	}else{
 		document.getElementById("vertcount").value = geometry.vertices.length;
 		  document.getElementById("facecount").value = geometry.faces.length;
+		  /*
 		  if( opts.smoothShade ){
 			for (var i=0; i<geometry.faces.length; ++i) {
-				//geometry.faces[i].normal.set(1,1,1).normalize();
+				// this is a lot of redundant work... 
 				geometry.faces[i].vertexNormals[0].normalize();
 				geometry.faces[i].vertexNormals[1].normalize();
 				geometry.faces[i].vertexNormals[2].normalize();
-				//geometry.faces[i].normal.copy(geometry.faces[i].vertexNormals[2]);
 			}
 		}
+		*/
 	}
       document.getElementById("meshtime").value = (end - start) / 1000.0;
 

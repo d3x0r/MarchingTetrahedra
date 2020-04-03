@@ -227,6 +227,7 @@ var MarchingTetrahedra3 = (function() {
 
 	
 function meshOne(data, dims) {
+	const normalList = [];
    
 	function stitchSpace(empty) {
 		if( stitching ) return;
@@ -326,8 +327,8 @@ function meshOne(data, dims) {
 		const points_ = pointHolder[1];
 		const crosses_ = crossHolder[1];
 		const normals_ = normalHolder[1];
-		let points = pointHolder[0];//new Array((dim0+1)+(dim1+1)*9);
-		let normals = normalHolder[0];
+		const points = pointHolder[0];//new Array((dim0+1)+(dim1+1)*9);
+		const normals = normalHolder[0];
 		//points.length = 0;
 		let crosses = crossHolder[0];
 		//crosses.length = 0;
@@ -416,7 +417,7 @@ function meshOne(data, dims) {
 									,cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
 									, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t )),vertices.length-1 );
 						}	
-						normals[baseHere+l] = new THREE.Vector3(0,0,0);
+						normalList.push( normals[baseHere+l] = new THREE.Vector3(0,0,0) );
 						crosses[baseHere+l] = 1;
 						bits[x+y*dim0] = 1; // set any 1 bit is set here.
 					}
@@ -508,9 +509,7 @@ function meshOne(data, dims) {
 						if( smoothShade ) {
 							//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
 							// suggests using the angle as a scalar of the normal.
-							faces.push( f = new THREE.Face3( points[ai]
-											,points[bi]
-										,points[ci] 
+							faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci] 
 										,[normals[ai],normals[bi],normals[ci]] )
 							);
 							const vA = vertices[f.a];
@@ -521,8 +520,7 @@ function meshOne(data, dims) {
 							ab.subVectors(vA, vB);
 							cb.cross(ab);
 
-
-							if( cb.length() > 0.001 ){
+							if( cb.length() > 0.000001 ){
 								cb.normalize();
 								a1t.subVectors(vC,vB);
 								a2t.subVectors(vA,vB);
@@ -537,7 +535,7 @@ function meshOne(data, dims) {
 							ab.subVectors(vC, vA);
 							cb.cross(ab);
 							
-							if( cb.length() > 0.001 ) {
+							if( cb.length() > 0.000001 ) {
 								cb.normalize();
 								a1t.subVectors(vB,vA);
 								a2t.subVectors(vC,vA);
@@ -554,7 +552,7 @@ function meshOne(data, dims) {
 							ab.subVectors(vB, vC);
 							cb.cross(ab);
 							
-							if( cb.length() > 0.001 ) {
+							if( cb.length() > 0.000001 ) {
 								cb.normalize();
 								a1t.subVectors(vA,vC);
 								a2t.subVectors(vB,vC);
@@ -670,6 +668,10 @@ function meshOne(data, dims) {
         
         
 	}
+			for (var i=0; i<normalList.length; ++i) {
+				// this is a lot of redundant work... 
+				normalList[i].normalize();
+			}
 	stitchSpace( false );	
 }       
 
