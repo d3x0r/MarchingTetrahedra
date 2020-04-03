@@ -48,13 +48,14 @@
 	    <p>Show facets: <input type="checkbox" id="showfacets" value="checked"></p>
 	    <p>Show edges: <input type="checkbox" id="showedges" value="checked"></p>
 	    <p>Smooth Shade: <input type="checkbox" id="smoothShade" value="checked"></p>
+	    <p>Show Normal Texture: <input type="checkbox" id="showNormal" value="checked"></p>
 	    <p>Resolution: <input type="text" id="resolution" value="0"> </p>
 	    <p>Vertex count: <input type="text" id="vertcount" value="0"> </p>
 	    <p>Face count: <input type="text" id="facecount" value="0"> </p>
 	    <p>(Approx.) Time:<input type="text" id="meshtime" value="0"> </p>
 	    <p>Inflation:<input type="range" id="inflation" value="50"> </p>
-	    <p>Maximize: <input type="checkbox" id="minimize" value="checked"></p>
-	    <p>Minimize: <input type="checkbox" id="maximize" value="checked"></p>
+	    <p>Maximize: <input type="checkbox" id="maximize" value="checked"></p>
+	    <p>Minimize: <input type="checkbox" id="minimize" value="checked"></p>
 	  </div>
 	</div>
 
@@ -216,7 +217,7 @@
 
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
-
+	if( document.getElementById( "showNormal" ).checked ) {
 			var material	= new THREE.MeshNormalMaterial();
 			surfacemesh	= new THREE.Mesh( geometry, material );
 			surfacemesh.doubleSided = true;
@@ -224,7 +225,20 @@
 			    color : 0xffffff
 			  , wireframe : true
 			});
-			wiremesh = new THREE.Mesh(geometry, wirematerial);
+		}
+		else {
+			var material	= new THREE.MeshPhongMaterial({
+				color:0x700070
+			});
+			surfacemesh	= new THREE.Mesh( geometry, material );
+			surfacemesh.doubleSided = true;
+			var wirematerial = new THREE.MeshBasicMaterial({
+			    color : 0xffffff
+			  , wireframe : true
+			});
+
+		}
+		wiremesh = new THREE.Mesh(geometry, wirematerial);
 			wiremesh.doubleSided = true;
 			scene.add( surfacemesh );
 			scene.add( wiremesh );
@@ -232,7 +246,7 @@
       var bb = geometry.boundingBox;
       wiremesh.position.x = surfacemesh.position.x = -(bb.max.x + bb.min.x) / 2.0;
       wiremesh.position.y = surfacemesh.position.y = -(bb.max.y + bb.min.y) / 2.0;
-      wiremesh.position.z = surfacemesh.position.z = -(bb.max.z + bb.min.z) / 2.0;
+	  wiremesh.position.z = surfacemesh.position.z = -(bb.max.z + bb.min.z) / 2.0;
 		}
 
 		if( !init() )	animate();
@@ -282,11 +296,23 @@
 
 			// here you add your objects
 			// - you will most likely replace this part by your own
-			var light	= new THREE.AmbientLight( Math.random() * 0xffffff );
+			var light	= new THREE.AmbientLight( 0.8 * 0xffffff );
 			scene.add( light );
-			var light	= new THREE.DirectionalLight( Math.random() * 0xffffff );
+			var light	= new THREE.DirectionalLight( 0.8 * 0xffffff );
+			//light.position.set( Math.random(), Math.random(), Math.random() ).normalize();
 			light.position.set( Math.random(), Math.random(), Math.random() ).normalize();
+			light.position.multiplyScalar(3);
 			scene.add( light );
+
+			var light2	= new THREE.DirectionalLight( 0.8 * 0xffffff );
+			//light.position.set( Math.random(), Math.random(), Math.random() ).normalize();
+			light2.position.copy( light.position );
+			light2.position.z = -light2.position.z;
+			light2.position.y = -light2.position.y;
+			light2.position.x = -light2.position.x;
+			light2.position.multiplyScalar(3);
+			scene.add( light2 );
+
 
 			//Initialize dom elements
 			testdata = createTestData();
@@ -312,6 +338,9 @@
 			is = document.getElementById( "maximize" );
 			is.onchange = updateMesh;
 			is = document.getElementById( "smoothShade" );
+			is.onchange = updateMesh;
+			is = document.getElementById( "showNormal" );
+			is.checked = true;
 			is.onchange = updateMesh;
 
 			//Update mesh
