@@ -146,13 +146,13 @@ function tetCompute( values, geometry, invert ) {
 						d= emit(d);
         	                                // emit a,b,c  b,c,d
                                                 if( invert ) {
-	        					e2( [a,b,d,c] );
-		                                        //e2( [c,a,d] );
-        		                                //e2( [d,a,b] );
+	        					//e2( [a,b,d,c] );
+		                                        e2( [c,a,d] );
+        		                                e2( [d,a,b] );
                                                 }else{
- 	        					e2( [a,c,d,b] );
-         		                                //e2( [a,c,d] );
-	                                                //e2( [a,d,b] );
+ 	        					//e2( [a,c,d,b] );
+         		                                e2( [a,c,d] );
+	                                                e2( [a,d,b] );
 						}
         	                        }
                                 } else {
@@ -183,13 +183,13 @@ function tetCompute( values, geometry, invert ) {
 				//if(1) return; console.log( "a" );
 						// VERIFIED
         	                                if( invert ) {
-	        					e2( [b,a,c,d] );
-		                                        //e2( [b,a,c] );
-        		                                //e2( [d,b,c] );
+	        					//e2( [b,a,c,d] );
+		                                        e2( [b,a,c] );
+        		                                e2( [d,b,c] );
 	        				}else {
-							e2( [b,d,c,a] );
-        	        	                        //e2( [a,b,c] );
-                                	                //e2( [b,d,c] );
+							//e2( [b,d,c,a] );
+        	        	                        e2( [a,b,c] );
+                                	                e2( [b,d,c] );
 	        				}
         	                        } else {
                                         	// 0 out  1 in  2 out  3 out
@@ -248,13 +248,13 @@ function tetCompute( values, geometry, invert ) {
 						c= emit(c);
 						d= emit(d);
         	                                if( !invert ) {
-	        					e2( [a,b,d,c] );
-		                                      //  e2( [d,a,b] );
-        		                              //  e2( [c,a,d] );
+	        					//e2( [a,b,d,c] );
+		                                        e2( [d,a,b] );
+        		                                e2( [c,a,d] );
 	        				}else {
-							e2( [a,c,d,b] );
-        	        	                     //   e2( [a,d,b] );
-                                	              //  e2( [a,c,d] );
+							//e2( [a,c,d,b] );
+        	        	                        e2( [a,d,b] );
+                                	                e2( [a,c,d] );
 	        				}
         	                	} else {
 	        				// 0 out 1 out   2 in  3 out
