@@ -11,7 +11,7 @@
 //
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,7 +24,7 @@
  * Marching Tetrahedra in Javascript
  *
  * Based on Unique Research
- *  
+ *
  * (Several bug fixes were made to deal with oriented faces)
  *
  * Javascript port by d3x0r
@@ -34,35 +34,35 @@ const zero_is_outside = true;
 
 
 /*
-	// there is a long combination of possible 3-4 bits some 50(?) of 
+	// there is a long combination of possible 3-4 bits some 50(?) of
 	// which only these 6 apply in reality
 
 this is the vertex references on the right, and which 'vert N' applies.
 
-   0 _ _ 1  
+   0 _ _ 1
    |\   /|
     \\2//     (above page)
     | | |
      \|/
-      3  
+      3
 
 
  this is the line index applied.  each 'bit' of valid is this number...
-	. ____0____ . 
+	. ____0____ .
 	|\         /|     01  02 03 12 23 31
-	\ \_1   3_/ /  
-	 |  \   /  |  
-	  \  \ /  /  
+	\ \_1   3_/ /
+	 |  \   /  |
+	  \  \ /  /
 	   \  .  /   (above page)
 	  2|  |  |5
-	    \ 4 /     
+	    \ 4 /
 	    | | |
 	     \|/
-	      .  
-	
-	
+	      .
+
+
 	const validCombinations = [
-		{ val:[1,1,1,0,0,0], // valid (vert 0, 0,1,2)   0 in, 0 out 
+		{ val:[1,1,1,0,0,0], // valid (vert 0, 0,1,2)   0 in, 0 out
 		},
 		{ val:[1,1,0,0,1,1], // valid 0,1,4,5  (0-3,1-2)
 		},
@@ -74,12 +74,11 @@ this is the vertex references on the right, and which 'vert N' applies.
 		},
 		{ val:[0,1,0,1,1,0], // valid (vert 2, 1,3,4 )
 		},
-		{ val:[0,0,1,0,1,1], // valid (vert 3, 2,4,5 ) 
+		{ val:[0,0,1,0,1,1], // valid (vert 3, 2,4,5 )
 		},
 	]
 
 */
-
 
 var MarchingTetrahedra3 = (function() {
 	// static working buffers
@@ -119,8 +118,8 @@ var MarchingTetrahedra3 = (function() {
 	];
 
 
-		
-// indexed with [invert][face][p] [0-3]	
+
+// indexed with [invert][face][p] [0-3]
 	const facePointIndexes = [
 			[
 				[[0,1,2]],
@@ -185,7 +184,7 @@ var MarchingTetrahedra3 = (function() {
 								newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
 												data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] +
 												data[n+1] + data[n+1+dims[0]*dims[1]] +
-												data[n+1+dims[0]]+ data[n+1+dims[0]+dims[0]*dims[1]] 
+												data[n+1+dims[0]]+ data[n+1+dims[0]+dims[0]*dims[1]]
 									)/8 );
 						}else {
 							newData.push( ( data[n] + data[n+dims[0]*dims[1]] )/2 );
@@ -207,7 +206,7 @@ var MarchingTetrahedra3 = (function() {
 					n++;
 				}
 			}
-		}	
+		}
 		dims = [dims[0] * 2 - 1, dims[1] * 2 - 1, dims[2] * 2 - 1];
 		data = newData;
 	}
@@ -225,10 +224,10 @@ var MarchingTetrahedra3 = (function() {
 	meshOne( data,dims );
 	return null;//{ vertices: vertices, faces: faces };
 
-	
+
 function meshOne(data, dims) {
 	const normalList = [];
-   
+
 	function stitchSpace(empty) {
 		if( stitching ) return;
 		stitching = true;
@@ -248,8 +247,8 @@ function meshOne(data, dims) {
 				for( let y = ranges[r][0][1]; y <= ranges[r][1][1]; y++ ){
 					for( let x = ranges[r][0][0]; x <= ranges[r][1][0]; x++ ){
 						if( ( x >= 0 && x < dims[0] )
-							&& ( y >= 0 && y < dims[1] ) 
-							&& ( z >= 0 && z < dims[2] ) 
+							&& ( y >= 0 && y < dims[1] )
+							&& ( z >= 0 && z < dims[2] )
 							)
 							cloud.push( data[x+y*dims[0]+z*dims[0]*dims[1]] );
 						else {
@@ -260,7 +259,7 @@ function meshOne(data, dims) {
 							// this is not so great; inside surface only
 							// triangles fail.
 							//cloud.push(-500);
-							
+
 							cloud.push(2.3 * Math.random());
 							//cloud.push(-2.3 * Math.random());
 						}
@@ -293,7 +292,7 @@ function meshOne(data, dims) {
 			, [ (dim0)*9+7, 8          , (dim0)*9+6, (1)*9+2     , (1)*9+3, (1+dim0)*9+1 ]
 			, [ 3, 6, 5, 8, (1)*9+3, (dim0)*9+6]
 			],
-	
+
 			[ [0, 1, 4, 3, 6, 5]
 			, [ (1)*9+0, (1+dim0)*9+1, (dim0)*9 + 4, 1*9+3, (dim0)*9+6, 5 ]
 			, [ (dim0)*9+7, 2, (dim0)*9+1, 8, 3, (dim0)*9+6 ]
@@ -317,13 +316,11 @@ function meshOne(data, dims) {
 
 	for( var z = 0; z < dim2-1; z++ ) {
 
-	{
-		
 		let tmp;
 		tmp = pointHolder[0]; pointHolder[0] = pointHolder[1]; pointHolder[1] = tmp;
 		tmp = crossHolder[0]; crossHolder[0] = crossHolder[1]; crossHolder[1] = tmp;
 		tmp = normalHolder[0]; normalHolder[0] = normalHolder[1]; normalHolder[1] = tmp;
-	        
+	
 		const points_ = pointHolder[1];
 		const crosses_ = crossHolder[1];
 		const normals_ = normalHolder[1];
@@ -332,32 +329,32 @@ function meshOne(data, dims) {
 		//points.length = 0;
 		let crosses = crossHolder[0];
 		//crosses.length = 0;
-	        
+	
 		let odd = 0;
 		let zOdd = z & 1;
 		//if( z !== 5 ) return;
 		cellOrigin[2] = patchOffset[2] + z-0.5;
 		for( var y = 0; y < dim1; y++ ) {
-			cellOrigin[1] = patchOffset[1] + y-0.5; 
+			cellOrigin[1] = patchOffset[1] + y-0.5;
 			for( var x = 0; x < dim0; x++ ) {
 				odd = (( x + y ) &1) ^ zOdd;
-	        
+	
 				cellOrigin[0] = patchOffset[0] + x-0.5;
-	        
+	
 				const baseHere = (x+0 + y*dim0)*9;
 				const baseOffset = x+0 + y*dim0 + z * dim0*dim1;
 				const lineArray = linesMin[odd];
 				bits[x+y*dim0] = 0;
-				
+
 				for( let l = 0; l < 9; l++ ) {
 					const p0 = lineArray[l][0];
 					const p1 = lineArray[l][1];
 					const data0=baseOffset+dataOffset[p0];
 					const data1=baseOffset+dataOffset[p1];
-	        
+	
 					// when we actually do layers, this matters.
 					if( z ) {
-						// copy data from old table... 
+						// copy data from old table...
 						if( !(p0 & 4) && !(p1 & 4) ) {
 							switch(l) {
 							case 0:
@@ -375,7 +372,7 @@ function meshOne(data, dims) {
 								points[baseHere+l] = points_[baseHere+7];
 								crosses[baseHere+l] = crosses_[baseHere+7];
 								break;
-							default: 
+							default:
 								//debugger;
 							}
 							bits[x+y*dim0] |= crosses[baseHere+l]; // set any 1 bit is set here.
@@ -400,23 +397,23 @@ function meshOne(data, dims) {
 						crosses[baseHere+l] = 0;
 						continue;
 					}
-	        
+	
 					d=-data[data0]; e=-data[data1];
-	        
+	
 					if( ( d <= 0 && e >0  )|| (d > 0 && e <= 0 ) ){
 						let t;
 						//console.log( "x, y is a cross:", (x+y*dim0)*9, crosses.length, l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` );
 						if( e <= 0 ) {
 							(t = -e/(d-e));
-							points[baseHere+l] = (vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t 
+							points[baseHere+l] = (vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t
 							       , cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t
 							       , cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t )),vertices.length-1);
 						} else {
 							(t = -d/(e-d));
-							points[baseHere+l] =( vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t 
+							points[baseHere+l] =( vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t
 									,cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
 									, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t )),vertices.length-1 );
-						}	
+						}
 						normalList.push( normals[baseHere+l] = new THREE.Vector3(0,0,0) );
 						crosses[baseHere+l] = 1;
 						bits[x+y*dim0] = 1; // set any 1 bit is set here.
@@ -428,9 +425,9 @@ function meshOne(data, dims) {
 				}
 			}
 		}
-	        
+	
 		if( debug_ ) {
-			function zz(v) { var s = ' 2,7,8  3,1,0  1,4,6\n';for( var y = 0; y < dim1; y++ ) { s += `y:${y}   \n`; 
+			function zz(v) { var s = ' 2,7,8  3,1,0  1,4,6\n';for( var y = 0; y < dim1; y++ ) { s += `y:${y}   \n`;
 
 				for( var x = 0; x < dim0; x++ ) {s += bits[(y*dim0+x)];s += "   " } s += "\n";
 
@@ -441,7 +438,7 @@ function meshOne(data, dims) {
 			}
 			console.log( "relavent computations:", zz( crosses,null), zz( points )  );
 		}
-	        
+	
 		for( var y = 0; y < dim1-1; y++ ) {
 			for( var x = 0; x < dim0-1; x++ ) {
 				if( !bits[x+y*dim0] ) {
@@ -452,7 +449,7 @@ function meshOne(data, dims) {
 					if( !bits[(x+1)+y*dim0] && !bits[(x)+(y+1)*dim0]&& !bits[(x)+(y)*dim0+dim0*dim1]) {
 						//continue;
 					}
-				
+
 				}
 
 				const baseOffset = (x + (y*dim0))*9;
@@ -466,7 +463,7 @@ function meshOne(data, dims) {
 						//console.log( `Output: odd:${odd} tet:${tet} x:${x} y:${y} a:${JSON.stringify(a)}` );
 						if( crosses[ baseOffset+edgeToComp[odd][tet][1] ] ) {
 							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
-								useFace = 1;								
+								useFace = 1;
 								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0;
 
 							} else {
@@ -481,7 +478,7 @@ function meshOne(data, dims) {
 								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0  ;
 							}else {
 								useFace = 4;
-								invert = ( data[dataOffset+vertToData[odd][tet][1]] >= 0 )?1:0 
+								invert = ( data[dataOffset+vertToData[odd][tet][1]] >= 0 )?1:0
 							}
 						}
 					} else {
@@ -502,97 +499,17 @@ function meshOne(data, dims) {
 						}
 					}
 					if( useFace-- ) {
-						const ai = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][0][0]];
-						const bi=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][0][1]];
-						const ci=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][0][2]] ;
-
-						if( smoothShade ) {
-							//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
-							// suggests using the angle as a scalar of the normal.
-							faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci] 
-										,[normals[ai],normals[bi],normals[ci]] )
-							);
-							const vA = vertices[f.a];
-							const vB = vertices[f.b];
-							const vC = vertices[f.c];
-							//if( !vA || !vB || !vC ) debugger;
-							cb.subVectors(vC, vB);
-							ab.subVectors(vA, vB);
-							cb.cross(ab);
-
-							if( cb.length() > 0.000001 ){
-								cb.normalize();
-								a1t.subVectors(vC,vB);
-								a2t.subVectors(vA,vB);
-								let angle = 0;
-								if( a1t.length() && a2t.length() )
-									angle = a1t.angleTo( a2t );
-								cb.multiplyScalar(angle);
-								normals[bi].add( cb );
-							} 
-							
-							cb.subVectors(vB, vA);
-							ab.subVectors(vC, vA);
-							cb.cross(ab);
-							
-							if( cb.length() > 0.000001 ) {
-								cb.normalize();
-								a1t.subVectors(vB,vA);
-								a2t.subVectors(vC,vA);
-								let angle = 0;
-								if( a1t.length() > 0 && a2t.length()>0 ){
-								angle = a1t.angleTo( a2t );
-								}
-								cb.multiplyScalar(angle);
-									
-								normals[ai].add( cb );
-							}
-
-							cb.subVectors(vA, vC);
-							ab.subVectors(vB, vC);
-							cb.cross(ab);
-							
-							if( cb.length() > 0.000001 ) {
-								cb.normalize();
-								a1t.subVectors(vA,vC);
-								a2t.subVectors(vB,vC);
-								let angle = 0;
-								if( a1t.length() > 0 && a2t.length()>0 ){
-								angle = a1t.angleTo( a2t );
-								}
-								cb.multiplyScalar(angle);
-									
-								normals[ci].add( cb );
-							}
-						}else {
-							faces.push( f = new THREE.Face3( points[ai]
-								,points[bi]
-								,points[ci] )
-							);
-							const vA = vertices[f.a];
-							const vB = vertices[f.b];
-							const vC = vertices[f.c];
-							//if( !vA || !vB || !vC ) debugger;
-							cb.subVectors(vC, vB);
-							ab.subVectors(vA, vB);
-							cb.cross(ab);
-		
-							if( cb.length() < 0.01 ){
-								cb.subVectors(vB, vA);
-								ab.subVectors(vC, vA);
-								cb.cross(ab);
-							}
-							cb.normalize();
-							f.normal.copy(cb);
-						}
-					
-						// push the second triangle.
-						if( facePointIndexes[invert][useFace][1] )								{
-							const ai = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][1][0]];
-							const bi=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][1][1]];
-							const ci=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][1][2]] ;
+						for( var tri=0;tri< facePointIndexes[invert][useFace].length; tri++ ){
+							const ai = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][0]];
+							const bi=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][1]];
+							const ci=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][2]] ;
+						
 							if( smoothShade ) {
-								faces.push( f = new THREE.Face3(  points[ai],points[bi],points[ci], [normals[ai],normals[bi],normals[ci]] ) );
+								//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
+								// suggests using the angle as a scalar of the normal.
+								faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci]
+											,[normals[ai],normals[bi],normals[ci]] )
+								);
 								const vA = vertices[f.a];
 								const vB = vertices[f.b];
 								const vC = vertices[f.c];
@@ -600,7 +517,8 @@ function meshOne(data, dims) {
 								cb.subVectors(vC, vB);
 								ab.subVectors(vA, vB);
 								cb.cross(ab);
-								if( cb.length() > 0.001 ){
+						
+								if( cb.length() > 0.000001 ){
 									cb.normalize();
 									a1t.subVectors(vC,vB);
 									a2t.subVectors(vA,vB);
@@ -610,37 +528,45 @@ function meshOne(data, dims) {
 									cb.multiplyScalar(angle);
 									normals[bi].add( cb );
 								}
-								
+
 								cb.subVectors(vB, vA);
 								ab.subVectors(vC, vA);
 								cb.cross(ab);
-								if( cb.length() > 0.001 ){
+
+								if( cb.length() > 0.000001 ) {
 									cb.normalize();
 									a1t.subVectors(vB,vA);
 									a2t.subVectors(vC,vA);
 									let angle = 0;
-									if( a1t.length() && a2t.length() )
-										angle = a1t.angleTo( a2t );
+									if( a1t.length() > 0 && a2t.length()>0 ){
+									angle = a1t.angleTo( a2t );
+									}
 									cb.multiplyScalar(angle);
+
 									normals[ai].add( cb );
 								}
-
+						
 								cb.subVectors(vA, vC);
 								ab.subVectors(vB, vC);
 								cb.cross(ab);
-								if( cb.length() > 0.001 ){
+
+								if( cb.length() > 0.000001 ) {
 									cb.normalize();
 									a1t.subVectors(vA,vC);
 									a2t.subVectors(vB,vC);
 									let angle = 0;
-									if( a1t.length() && a2t.length() )
-										angle = a1t.angleTo( a2t );
+									if( a1t.length() > 0 && a2t.length()>0 ){
+									angle = a1t.angleTo( a2t );
+									}
 									cb.multiplyScalar(angle);
 
 									normals[ci].add( cb );
 								}
 							}else {
-								faces.push( f = new THREE.Face3(  points[ai],points[bi],points[ci] ) );
+								faces.push( f = new THREE.Face3( points[ai]
+									,points[bi]
+									,points[ci] )
+								);
 								const vA = vertices[f.a];
 								const vB = vertices[f.b];
 								const vC = vertices[f.c];
@@ -648,7 +574,7 @@ function meshOne(data, dims) {
 								cb.subVectors(vC, vB);
 								ab.subVectors(vA, vB);
 								cb.cross(ab);
-			
+		                              
 								if( cb.length() < 0.01 ){
 									cb.subVectors(vB, vA);
 									ab.subVectors(vC, vA);
@@ -656,29 +582,24 @@ function meshOne(data, dims) {
 								}
 								cb.normalize();
 								f.normal.copy(cb);
-	
 							}
-						} 
+						}
 					}
-				}	
+				}
 			}
 		}
-		
-	}       
-        
-        
 	}
-			for (var i=0; i<normalList.length; ++i) {
-				// this is a lot of redundant work... 
-				normalList[i].normalize();
-			}
-	stitchSpace( false );	
-}       
+	for (var i=0; i<normalList.length; ++i) {
+		// this is a lot of redundant work...
+		normalList[i].normalize();
+	}
+	//stitchSpace( false );
+}
 
 }
 })()
-        
+
 if("undefined" != typeof exports) {
 	exports.mesher = MarchingTetrahedra3;
-}       
+}
 
