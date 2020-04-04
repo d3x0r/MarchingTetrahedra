@@ -38,6 +38,7 @@
 			Isosurface Algorithm Tester
 		</div>
 		<div class="bottom" id="inlineDoc">
+			- <i><a href="https://www.github.com/d3x0r/MarchingTetrahedra">https://www.github.com/d3x0r/MarchingTetrahedra</a></i>
 			- <i>p</i> for screenshot
 		- <i>f</i> for fullscreen</div>
 	  <div class="controls">
@@ -198,15 +199,16 @@
 	}else{
 		document.getElementById("vertcount").value = geometry.vertices.length;
 		  document.getElementById("facecount").value = geometry.faces.length;
+		  /*
 		  if( opts.smoothShade ){
 			for (var i=0; i<geometry.faces.length; ++i) {
-				//geometry.faces[i].normal.set(1,1,1).normalize();
+				// this is a lot of redundant work... 
 				geometry.faces[i].vertexNormals[0].normalize();
 				geometry.faces[i].vertexNormals[1].normalize();
 				geometry.faces[i].vertexNormals[2].normalize();
-				//geometry.faces[i].normal.copy(geometry.faces[i].vertexNormals[2]);
 			}
 		}
+		*/
 	}
       document.getElementById("meshtime").value = (end - start) / 1000.0;
 
