@@ -16,22 +16,22 @@
 		<script src="./src/THREEx.WindowResize.js"></script>
 		<script src="./src/threex.dragpancontrols.js"></script>
 
+			<script type="module" src="./src/customShaderLoader.js"></script>
+	<!--Mesh algorithms-->
+	<script src="./src/marchingcubes.js"></script>
+	<script src="./src/marchingtetrahedra.js"></script>
+	<script src="./src/marchingtetrahedra2.js"></script>
+	<script src="./src/marchingtetrahedra3.js"></script>
+	<script src="./src/surfacenets.js"></script>
 
-    <!--Mesh algorithms-->
-    <script src="./src/marchingcubes.js"></script>
-    <script src="./src/marchingtetrahedra.js"></script>
-    <script src="./src/marchingtetrahedra2.js"></script>
-    <script src="./src/marchingtetrahedra3.js"></script>
-    <script src="./src/surfacenets.js"></script>
-
-    <script src="./src/perlinnoise.js"></script>
-    <script src="./src/testdata.js"></script>
+	<script src="./src/perlinnoise.js"></script>
+	<script src="./src/testdata.js"></script>
 
 		<link href="./src/main.css" rel="stylesheet">
 	</head>
 <body>
 	<!-- three.js container -->
-    	<div id="container"></div>
+		<div id="container"></div>
 	<!-- info on screen display -->
 	<div id="info">
 		<div class="top">
@@ -42,21 +42,21 @@
 			- <i>p</i> for screenshot
 		- <i>f</i> for fullscreen</div>
 	  <div class="controls">
-	    <p>Input Data:</p>
-	    <p><select id="datasource"></select></p>
-	    <p>Algorithm:</p>
-	    <p><select id="mesher"></select></p>
-	    <p>Show facets: <input type="checkbox" id="showfacets" value="checked"></p>
-	    <p>Show edges: <input type="checkbox" id="showedges" value="checked"></p>
-	    <p>Smooth Shade: <input type="checkbox" id="smoothShade" value="checked"></p>
-	    <p>Show Normal Texture: <input type="checkbox" id="showNormal" value="checked"></p>
-	    <p>Resolution: <input type="text" id="resolution" value="0"> </p>
-	    <p>Vertex count: <input type="text" id="vertcount" value="0"> </p>
-	    <p>Face count: <input type="text" id="facecount" value="0"> </p>
-	    <p>(Approx.) Time:<input type="text" id="meshtime" value="0"> </p>
-	    <p>Inflation:<input type="range" id="inflation" value="50"> </p>
-	    <p>Maximize: <input type="checkbox" id="maximize" value="checked"></p>
-	    <p>Minimize: <input type="checkbox" id="minimize" value="checked"></p>
+		<p>Input Data:</p>
+		<p><select id="datasource"></select></p>
+		<p>Algorithm:</p>
+		<p><select id="mesher"></select></p>
+		<p>Show facets: <input type="checkbox" id="showfacets" value="checked"></p>
+		<p>Show edges: <input type="checkbox" id="showedges" value="checked"></p>
+		<p>Smooth Shade: <input type="checkbox" id="smoothShade" value="checked"> - Show Grid: <input type="checkbox" id="showGrid" value="checked"></p>
+		<p>Show Normal Texture: <input type="checkbox" id="showNormal" value="checked"></p>
+		<p>Resolution: <input type="text" id="resolution" value="0"> </p>
+		<p>Vertex count: <input type="text" id="vertcount" value="0"> </p>
+		<p>Face count: <input type="text" id="facecount" value="0"> </p>
+		<p>(Approx.) Time:<input type="text" id="meshtime" value="0"> </p>
+		<p>Inflation:<input type="range" id="inflation" value="50"> </p>
+		<p>Maximize: <input type="checkbox" id="maximize" value="checked"></p>
+		<p>Minimize: <input type="checkbox" id="minimize" value="checked"></p>
 	  </div>
 	</div>
 
@@ -65,11 +65,11 @@
 		var camera, cameraControl;
 		var geometry, surfacemesh, wiremesh;
 		var meshers = {
-		    'Marching Tetraheda 3 (DCL-plane)' : MarchingTetrahedra3
+			'Marching Tetraheda 3 (DCL-plane)' : MarchingTetrahedra3
 		  , 'Marching Tetraheda 2 (DCL-cell)' : MarchingTetrahedra2
 		  , 'Marching Cubes': MarchingCubes
 		  , 'Marching Tetraheda' : MarchingTetrahedra
-	    	,  'Naive Surface Nets': SurfaceNets
+			,  'Naive Surface Nets': SurfaceNets
 		};
 		var testdata = {};
 
@@ -78,11 +78,18 @@
 		  scene.remove( surfacemesh );
 		  scene.remove( wiremesh );
 
-      //Create surface mesh
-			geometry	= new THREE.Geometry();
+	  //Create surface mesh
+			if( document.getElementById( "showGrid").checked) {
+				var geometryHelper = THREE.GridGeometryBuffer();
+				geometry = geometryHelper.geometry;
+			}else {
+				geometry	= new THREE.Geometry();
+				geometry.vertices.length = 0;
+				geometry.faces.length = 0;
+			}
 
 		  var mesher = meshers[ document.getElementById("mesher").value ]
-		    , field  = testdata[ document.getElementById("datasource").value ]();
+			, field  = testdata[ document.getElementById("datasource").value ]();
 
 		  var start = (new Date()).getTime();
 	var inflatVal = document.getElementById( "inflation" ).value;
@@ -118,87 +125,123 @@
 		}
 	}
 
-	geometry.vertices.length = 0;
-	  geometry.faces.length = 0;
 	  var opts;
-      var result = mesher( newData, field.dims, opts = {
+	  var result = mesher( newData, field.dims, opts = {
 		  minimize : document.getElementById( "minimize" ).checked,
 		  maximize : document.getElementById( "maximize" ).checked,
 		  inflation : inflatVal,
 		  vertices : geometry.vertices,
 		  faces : geometry.faces,
-	      smoothShade : document.getElementById( "smoothShade" ).checked,
+		  smoothShade : document.getElementById( "smoothShade" ).checked,
+		  showGrid : document.getElementById( "showGrid").checked,
+		  geometryHelper : geometryHelper,
 		} );
-      var end = (new Date()).getTime();
+	  var end = (new Date()).getTime();
 
-      //Update statistics
+	  //Update statistics
 	  document.getElementById("resolution").value = field.dims[0] + 'x' + field.dims[1] + 'x' + field.dims[2];
 	  if( result ){
-      	document.getElementById("vertcount").value = result.vertices.length;
+	  	document.getElementById("vertcount").value = result.vertices.length;
 	  	document.getElementById("facecount").value = result.faces.length;
 
+		if( opts.showGrid ) {
+			for(var i=0; i<result.vertices.length; ++i) {
+				geometryHelper.addPoint( result.vertices[i]
+									, null, null // texture, and uv[1,0] 
+									 , [0x50,0x00,0x50,255] // edge color
+									 , [0x11, 0x11, 0x11, 255] // face color
+									 , [0,0,0] // normal *needs to be updated*;
+									 , 100 // pow
+									 , false // use texture
+									 , false // flat
+									 , false // decal texture?
+									 , result.vertices[i]  // modulous of this point.
+								);
+			}
+			const cb = new THREE.Vector3(), ab = new THREE.Vector3();
+			for(var i=0; i<result.faces.length; ++i) {
+				const f = result.faces[i];
+				const vA = result.vertices[f[0]];
+				const vB = result.vertices[f[1]];
+				const vC = result.vertices[f[2]];
+				cb.subVectors(vC, vB);
+				ab.subVectors(vA, vB);
+				cb.cross(ab);
+				cb.normalize();
+				if( cb.length() < 0.001 ){
+					cb.subVectors(vB, vA);
+					ab.subVectors(vC, vA);
+					cb.cross(ab);
+				}
+				cb.normalize();
 
-      for(var i=0; i<result.vertices.length; ++i) {
-        var v = result.vertices[i];
-        geometry.vertices.push(new THREE.Vector3(v[0], v[1], v[2]));
-      }
+				geometryHelper.addFace( f[0], f[1],f[2], [cb.x,cb.y,cb.z]);
+			}
+			geometryHelper.markDirty();
+		} else {
+			for(var i=0; i<result.vertices.length; ++i) {
+				var v = result.vertices[i];
+				geometry.vertices.push(new THREE.Vector3(v[0], v[1], v[2]));
+			}
 
-      for(var i=0; i<result.faces.length; ++i) {
-        var f = result.faces[i];
-        if(f.length === 3) {
-          geometry.faces.push(new THREE.Face3(f[0], f[1], f[2]));
-        } else if(f.length === 4) {
-          geometry.faces.push(new THREE.Face4(f[0], f[1], f[2], f[3]));
-        } else {
-          //Polygon needs to be subdivided
-        }
-      }
+			for(var i=0; i<result.faces.length; ++i) {
+			var f = result.faces[i];
+			if(f.length === 3) {
+				geometry.faces.push(new THREE.Face3(f[0], f[1], f[2]));
+			} else if(f.length === 4) {
+				geometry.faces.push(new THREE.Face4(f[0], f[1], f[2], f[3]));
+			} else {
+				//Polygon needs to be subdivided
+			}
+			}
 
-      var cb = new THREE.Vector3(), ab = new THREE.Vector3();
-      for (var i=0; i<geometry.faces.length; ++i) {
-        var f = geometry.faces[i];
-        var vA = geometry.vertices[f.a];
-        var vB = geometry.vertices[f.b];
-		var vC = geometry.vertices[f.c];
-		if( !vA || !vB || !vC ) debugger;
-        cb.subVectors(vC, vB);
-        ab.subVectors(vA, vB);
-        cb.cross(ab);
-        cb.normalize();
-        if (geometry.faces[i].length == 3) {
-          continue;
-        }
+			var cb = new THREE.Vector3(), ab = new THREE.Vector3();
+			for (var i=0; i<geometry.faces.length; ++i) {
+			var f = geometry.faces[i];
+			var vA = geometry.vertices[f.a];
+			var vB = geometry.vertices[f.b];
+			var vC = geometry.vertices[f.c];
+			cb.subVectors(vC, vB);
+			ab.subVectors(vA, vB);
+			cb.cross(ab);
+			cb.normalize();
+			if (geometry.faces[i].length == 3) {
+				continue;
+			}
 
-		if( cb.length() < 0.001 ){
-			cb.subVectors(vB, vA);
-	        ab.subVectors(vC, vA);
-    	    cb.cross(ab);
-        	cb.normalize();
-        	if (geometry.faces[i].length == 3) {
-          		continue;
-        	}
+			if( cb.length() < 0.001 ){
+				cb.subVectors(vB, vA);
+				ab.subVectors(vC, vA);
+				cb.cross(ab);
+				cb.normalize();
+				if (geometry.faces[i].length == 3) {
+					continue;
+				}
 
-		}
+			}
 
-        // quad
-        if (f.d /*cb.isZero()*/) {
-          // broken normal in the first triangle, let's use the second triangle
-          var vA = geometry.vertices[f.a];
-          var vB = geometry.vertices[f.c];
-          var vC = geometry.vertices[f.d];
-		  if( !vA || !vB || !vC ) debugger;
-          cb.subVectors(vC, vB);
-          ab.subVectors(vA, vB);
-          cb.cross(ab);
-          cb.normalize();
-        }
-        f.normal.copy(cb);
+			// quad
+			if (f.d /*cb.isZero()*/) {
+				// broken normal in the first triangle, let's use the second triangle
+				var vA = geometry.vertices[f.a];
+				var vB = geometry.vertices[f.c];
+				var vC = geometry.vertices[f.d];
+				if( !vA || !vB || !vC ) debugger;
+				cb.subVectors(vC, vB);
+				ab.subVectors(vA, vB);
+				cb.cross(ab);
+				cb.normalize();
+			}
+			f.normal.copy(cb);
+			}
 
 	}
 
 	}else{
+		if( !opts.showGrid ) {
 		document.getElementById("vertcount").value = geometry.vertices.length;
 		  document.getElementById("facecount").value = geometry.faces.length;
+		}
 		  /*
 		  if( opts.smoothShade ){
 			for (var i=0; i<geometry.faces.length; ++i) {
@@ -210,44 +253,48 @@
 		}
 		*/
 	}
-      document.getElementById("meshtime").value = (end - start) / 1000.0;
+	  document.getElementById("meshtime").value = (end - start) / 1000.0;
 
 
-      geometry.verticesNeedUpdate = true;
-      geometry.elementsNeedUpdate = true;
-      geometry.normalsNeedUpdate = true;
+	  geometry.verticesNeedUpdate = true;
+	  geometry.elementsNeedUpdate = true;
+	  geometry.normalsNeedUpdate = true;
 
-      geometry.computeBoundingBox();
-      geometry.computeBoundingSphere();
-	if( document.getElementById( "showNormal" ).checked ) {
-			var material	= new THREE.MeshNormalMaterial();
+	  geometry.computeBoundingBox();
+	  geometry.computeBoundingSphere();
+	if( document.getElementById( "showNormal" ).checked && !document.getElementById("showGrid").checked ) {
+			let material	= new THREE.MeshNormalMaterial();
 			surfacemesh	= new THREE.Mesh( geometry, material );
 			surfacemesh.doubleSided = true;
-			var wirematerial = new THREE.MeshBasicMaterial({
-			    color : 0xffffff
-			  , wireframe : true
-			});
 		}
 		else {
-			var material	= new THREE.MeshPhongMaterial({
-				color:0x700070
-			});
-			surfacemesh	= new THREE.Mesh( geometry, material );
-			surfacemesh.doubleSided = true;
-			var wirematerial = new THREE.MeshBasicMaterial({
-			    color : 0xffffff
+			let material;
+			if( document.getElementById("showGrid").checked )
+			{
+				material	= THREE.GridGeometryMaterial();
+				surfacemesh	= new THREE.Mesh( geometry, material );
+				//cluster.THREE_solid.add( sector.THREE_solid = new THREE.Mesh( sector.solid_geometry.geometry, geometryShader ) );
+			}else {
+				material	= new THREE.MeshPhongMaterial({
+					color:0x700070
+				});
+				surfacemesh	= new THREE.Mesh( geometry, material );
+				surfacemesh.doubleSided = true;
+			}
+		}
+		var wirematerial = new THREE.MeshBasicMaterial({
+				color : 0xffffff
 			  , wireframe : true
 			});
-
-		}
 		wiremesh = new THREE.Mesh(geometry, wirematerial);
-			wiremesh.doubleSided = true;
-			scene.add( surfacemesh );
-			scene.add( wiremesh );
+		wiremesh.doubleSided = true;
 
-      var bb = geometry.boundingBox;
-      wiremesh.position.x = surfacemesh.position.x = -(bb.max.x + bb.min.x) / 2.0;
-      wiremesh.position.y = surfacemesh.position.y = -(bb.max.y + bb.min.y) / 2.0;
+		scene.add( surfacemesh );
+		scene.add( wiremesh );
+
+	  var bb = geometry.boundingBox;
+	  wiremesh.position.x = surfacemesh.position.x = -(bb.max.x + bb.min.x) / 2.0;
+	  wiremesh.position.y = surfacemesh.position.y = -(bb.max.y + bb.min.y) / 2.0;
 	  wiremesh.position.z = surfacemesh.position.z = -(bb.max.z + bb.min.z) / 2.0;
 		}
 
@@ -344,6 +391,8 @@
 			is = document.getElementById( "showNormal" );
 			is.checked = true;
 			is.onchange = updateMesh;
+			is = document.getElementById( "showGrid" );
+			is.onchange = updateMesh;
 
 			//Update mesh
 			updateMesh();
@@ -374,8 +423,8 @@
 			// update camera controls
 			cameraControls.update();
 
-      surfacemesh.visible = document.getElementById("showfacets").checked;
-      wiremesh.visible = document.getElementById("showedges").checked;
+	  surfacemesh.visible = document.getElementById("showfacets").checked;
+	  wiremesh.visible = document.getElementById("showedges").checked;
 
 			// actually render the scene
 			renderer.render( scene, camera );

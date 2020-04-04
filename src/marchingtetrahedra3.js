@@ -141,23 +141,11 @@ var MarchingTetrahedra3 = (function() {
 			]
 	];
 
-	const normals = [
-		[
-			[
-				[[ ]]
-			]
-		],
-		[
-			[
-				[ [ -1, -2, -1 ] ],
-			]
-		]
-	]
-
-		return function(data,dims, opts) {
+	return function(data,dims, opts) {
 
 	let cb = new THREE.Vector3();
 	let ab = new THREE.Vector3()
+	let normTmp = new THREE.Vector3();
 
 	let a1t = new THREE.Vector3();
 	let a2t = new THREE.Vector3();
@@ -167,6 +155,7 @@ var MarchingTetrahedra3 = (function() {
 	, faces = opts.faces || [];
 	var smoothShade = opts.smoothShade || false;
 	var newData = [];
+	const showGrid = opts.showGrid;
 	if( highDef ){
 		let n = 0;
 		for( var z = 0; z < (dims[2]*2-1); z++ ){
@@ -402,19 +391,56 @@ function meshOne(data, dims) {
 	
 					if( ( d <= 0 && e >0  )|| (d > 0 && e <= 0 ) ){
 						let t;
+						let normal = null;
 						//console.log( "x, y is a cross:", (x+y*dim0)*9, crosses.length, l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` );
 						if( e <= 0 ) {
 							(t = -e/(d-e));
-							points[baseHere+l] = (vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t
-							       , cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t
-							       , cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t )),vertices.length-1);
+							if( opts.geometryHelper ){
+								var p = [cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t
+									, cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t
+									, cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t ];
+								normal = opts.geometryHelper.addPoint( p
+									 , null, null // texture, and uv[1,0] 
+									 , [0x50,0x00,0x50,255] // edge color
+									 , [0x11, 0x11, 0x11, 255] // face color
+									 , [0,0,0] // normal *needs to be updated*;
+									 , 100 // pow
+									 , false // use texture
+									 , false // flat
+									 , false // decal texture?
+									 , [p[0]*3,p[1]*3,p[2]*3]  // modulous of this point.
+								);
+								points[baseHere+l] = normal.id;
+							}
+							else
+								points[baseHere+l] = (vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t
+								           , cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t
+								           , cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t )),vertices.length-1);
 						} else {
 							(t = -d/(e-d));
-							points[baseHere+l] =( vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t
-									,cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
-									, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t )),vertices.length-1 );
+							if( opts.geometryHelper ){
+								var p = [cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t
+								     , cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
+								     , cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t ];
+								normal = opts.geometryHelper.addPoint( p
+									 , null, null // texture, and uv[1,0] 
+									 , [0x50,0x00,0x50,255] // edge color
+									 , [0x11, 0x11, 0x11, 255] // face color
+									 , [0,0,0] // normal *needs to be updated*;
+									 , 100 // pow
+									 , false // use texture
+									 , false // flat
+									 , false // decal texture?
+									 , [p[0]*3,p[1]*3,p[2]*3]  // modulous of this point.
+								);
+								points[baseHere+l] = normal.id;
+							}
+							else
+								points[baseHere+l] =( vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t
+										,cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
+										, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t )),vertices.length-1 );
 						}
-						normalList.push( normals[baseHere+l] = new THREE.Vector3(0,0,0) );
+						normalList.push( normals[baseHere+l] = ( normal || new THREE.Vector3(0,0,0) ) );
 						crosses[baseHere+l] = 1;
 						bits[x+y*dim0] = 1; // set any 1 bit is set here.
 					}
@@ -501,87 +527,185 @@ function meshOne(data, dims) {
 					if( useFace-- ) {
 						for( var tri=0;tri< facePointIndexes[invert][useFace].length; tri++ ){
 							const ai = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][0]];
-							const bi=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][1]];
-							const ci=baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][2]] ;
+							const bi = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][1]];
+							const ci = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][2]] ;
 						
 							if( smoothShade ) {
 								//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
 								// suggests using the angle as a scalar of the normal.
-								faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci]
-											,[normals[ai],normals[bi],normals[ci]] )
-								);
-								const vA = vertices[f.a];
-								const vB = vertices[f.b];
-								const vC = vertices[f.c];
-								//if( !vA || !vB || !vC ) debugger;
-								cb.subVectors(vC, vB);
-								ab.subVectors(vA, vB);
-								cb.cross(ab);
-						
-								if( cb.length() > 0.000001 ){
-									cb.normalize();
-									a1t.subVectors(vC,vB);
-									a2t.subVectors(vA,vB);
-									let angle = 0;
-									if( a1t.length() && a2t.length() )
-										angle = a1t.angleTo( a2t );
-									cb.multiplyScalar(angle);
-									normals[bi].add( cb );
-								}
+								
 
-								cb.subVectors(vB, vA);
-								ab.subVectors(vC, vA);
-								cb.cross(ab);
+								if( opts.geometryHelper )	{
 
-								if( cb.length() > 0.000001 ) {
-									cb.normalize();
-									a1t.subVectors(vB,vA);
-									a2t.subVectors(vC,vA);
-									let angle = 0;
-									if( a1t.length() > 0 && a2t.length()>0 ){
-									angle = a1t.angleTo( a2t );
+									const vA = normals[ai].vertBuffer;
+									const vB = normals[bi].vertBuffer;
+									const vC = normals[ci].vertBuffer;
+									const fnorm = [0,0,0];
+									const tmp = [0,0,0];
+									const a1t = [0,0,0];
+									const a2t = [0,0,0];
+									//if( !vA || !vB || !vC ) debugger;
+									fnorm[0] = vC[0]-vB[0];fnorm[1] = vC[1]-vB[1];fnorm[2] = vC[2]-vB[2];
+									tmp[0] = vA[0]-vB[0];tmp[1] = vA[1]-vB[1];tmp[2] = vA[2]-vB[2];
+									let a=fnorm[0],b=fnorm[1],c=fnorm[2];
+									fnorm[0]=fnorm[1]*tmp[2] - fnorm[2]*tmp[1];
+									fnorm[1]=fnorm[2]*tmp[0] - a      *tmp[2];
+									fnorm[2]=a      *tmp[2] - fnorm[2]*tmp[0];
+									let ds;
+									if( (ds=fnorm[0]*fnorm[0]+fnorm[1]*fnorm[1]+fnorm[2]*fnorm[2]) > 0.000001 ){
+										ds = 1/Math.sqrt(ds);
+										fnorm[0] *= ds;fnorm[1] *= ds;fnorm[2] *= ds;
+									}else {
+
 									}
-									cb.multiplyScalar(angle);
 
-									normals[ai].add( cb );
-								}
-						
-								cb.subVectors(vA, vC);
-								ab.subVectors(vB, vC);
-								cb.cross(ab);
+									{
+										a1t[0]=vC[0]-vB[0];a1t[1]=vC[1]-vB[1];a1t[2]=vC[2]-vB[2];
+										a2t[0]=vA[0]-vB[0];a2t[1]=vA[1]-vB[1];a2t[2]=vA[2]-vB[2];
 
-								if( cb.length() > 0.000001 ) {
-									cb.normalize();
-									a1t.subVectors(vA,vC);
-									a2t.subVectors(vB,vC);
-									let angle = 0;
-									if( a1t.length() > 0 && a2t.length()>0 ){
-									angle = a1t.angleTo( a2t );
+										let angle = 0;
+										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.0001 && 
+										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.0001 ) {
+												angle = 2 * Math.acos(Math.abs( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2] ) ))
+											//angle = a1t.angleTo( a2t );
+										}
+
+										normals[bi].normalBuffer[0] += fnorm[0]*angle;
+										normals[bi].normalBuffer[1] += fnorm[1]*angle;
+										normals[bi].normalBuffer[2] += fnorm[2]*angle;
 									}
-									cb.multiplyScalar(angle);
 
-									normals[ci].add( cb );
-								}
-							}else {
-								faces.push( f = new THREE.Face3( points[ai]
-									,points[bi]
-									,points[ci] )
-								);
-								const vA = vertices[f.a];
-								const vB = vertices[f.b];
-								const vC = vertices[f.c];
-								//if( !vA || !vB || !vC ) debugger;
-								cb.subVectors(vC, vB);
-								ab.subVectors(vA, vB);
-								cb.cross(ab);
-		                              
-								if( cb.length() < 0.01 ){
-									cb.subVectors(vB, vA);
-									ab.subVectors(vC, vA);
+									{
+										a1t[0]=vB[0]-vA[0];a1t[1]=vB[1]-vA[1];a1t[2]=vB[2]-vA[2];
+										a2t[0]=vC[0]-vA[0];a2t[1]=vC[1]-vA[1];a2t[2]=vC[2]-vA[2];
+
+										let angle = 0;
+										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.0001 && 
+										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.0001 )
+												angle = 2 * Math.acos(Math.abs( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2] ) ))
+											//angle = a1t.angleTo( a2t );
+										normals[ai].normalBuffer[0] += fnorm[0]*angle;
+										normals[ai].normalBuffer[1] += fnorm[1]*angle;
+										normals[ai].normalBuffer[2] += fnorm[2]*angle;
+									}
+
+									{
+										a1t[0]=vA[0]-vC[0];a1t[1]=vA[1]-vC[1];a1t[2]=vA[2]-vC[2];
+										a2t[0]=vB[0]-vC[0];a2t[1]=vB[1]-vC[1];a2t[2]=vB[2]-vC[2];
+
+										let angle = 0;
+										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.0001 && 
+										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.0001 )
+												angle = 2 * Math.acos(Math.abs( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2] ) ))
+											//angle = a1t.angleTo( a2t );
+										normals[ci].normalBuffer[0] += fnorm[0]*angle;
+										normals[ci].normalBuffer[1] += fnorm[1]*angle;
+										normals[ci].normalBuffer[2] += fnorm[2]*angle;
+									}
+									opts.geometryHelper.addFace( points[ai], points[bi], points[ci] );
+
+								}else{
+									faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci]
+												,[normals[ai],normals[bi],normals[ci]] )
+									);
+
+									const vA = vertices[f.a];
+									const vB = vertices[f.b];
+									const vC = vertices[f.c];
+									//if( !vA || !vB || !vC ) debugger;
+									cb.subVectors(vC, vB);
+									ab.subVectors(vA, vB);
 									cb.cross(ab);
+							
+									if( cb.length() > 0.000001 ){
+										// try a cross from a different side.
+									}
+									cb.normalize();
+
+									{
+										a1t.subVectors(vC,vB);
+										a2t.subVectors(vA,vB);
+										let angle = 0;
+										if( a1t.length() && a2t.length() )
+											angle = a1t.angleTo( a2t );
+										normTmp.copy(cb).multiplyScalar(angle);
+										normals[bi].add( normTmp );
+									}
+	
+									{
+										a1t.subVectors(vB,vA);
+										a2t.subVectors(vC,vA);
+										let angle = 0;
+										if( a1t.length() > 0 && a2t.length()>0 ){
+											angle = a1t.angleTo( a2t );
+										}
+										cb.multiplyScalar(angle);
+										normTmp.copy(cb).multiplyScalar(angle);
+										normals[ai].add( normTmp );
+									}
+							
+									cb.subVectors(vA, vC);
+									ab.subVectors(vB, vC);
+									cb.cross(ab);
+	
+									if( cb.length() > 0.000001 ) {
+										cb.normalize();
+										a1t.subVectors(vA,vC);
+										a2t.subVectors(vB,vC);
+										let angle = 0;
+										if( a1t.length() > 0 && a2t.length()>0 ){
+										angle = a1t.angleTo( a2t );
+										}
+										cb.multiplyScalar(angle);
+	
+										normTmp.copy(cb).multiplyScalar(angle);
+										normals[ci].add( normTmp );
+									}
 								}
-								cb.normalize();
-								f.normal.copy(cb);
+							} else {
+								if( opts.geometryHelper )	{
+									const vA = normals[ai].vertBuffer;
+									const vB = normals[bi].vertBuffer;
+									const vC = normals[ci].vertBuffer;
+									let norm=[0,0,0];
+									let tmp=[0,0,0];
+									//if( !vA || !vB || !vC ) debugger;
+									norm[0] = vC[0]-vB[0];norm[1] = vC[1]-vB[1];norm[2] = vC[2]-vB[2];
+									tmp[0] = vA[0]-vB[0];tmp[1] = vA[1]-vB[1];tmp[2] = vA[2]-vB[2];
+									let a=norm[0],b=norm[1],c=norm[2];
+									norm[0]=norm[2]*tmp[3] - norm[z]*tmp[2];
+									norm[1]=norm[2]*tmp[0] - a      *tmp[2];
+									norm[2]=a      *tmp[2] - norm[2]*tmp[0];
+									let ds;
+									if( (ds=norm[0]*norm[0]+norm[1]*norm[1]+norm[2]*norm[2]) < 0.01 ){
+										norm[0] = vB[0]-vA[0];norm[1] = vB[1]-vA[1];norm[2] = vB[2]-vA[2];
+										tmp[0] = vC[0]-vA[0];tmp[1] = vC[1]-vA[1];tmp[2] = vC[2]-vA[2];
+										let a=norm[0],b=norm[1],c=norm[2];
+										norm[0]=norm[2]*tmp[3] - norm[z]*tmp[2];
+										norm[1]=norm[2]*tmp[0] - a*tmp[2];
+										norm[2]=a      *tmp[2] - norm[2]*tmp[0];
+										ds=norm[0]*norm[0]+norm[1]*norm[1]+norm[2]*norm[2];
+									}
+									norm[0] *= 1/Math.sqrt(ds);norm[1] *= 1/Math.sqrt(ds);norm[2] *= 1/Math.sqrt(ds);
+									opts.geometryHelper.addFace( points[ai], points[bi], points[ci]
+												, norm );
+								}else {
+									const vA = vertices[points[ai]];
+									const vB = vertices[points[bi]];
+									const vC = vertices[points[ci]];
+									//if( !vA || !vB || !vC ) debugger;
+									cb.subVectors(vC, vB);
+									ab.subVectors(vA, vB);
+									cb.cross(ab);
+										
+									if( cb.length() < 0.01 ){
+										cb.subVectors(vB, vA);
+										ab.subVectors(vC, vA);
+										cb.cross(ab);
+									}
+									cb.normalize();
+									faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci], cb.clone() ) );
+								}
 							}
 						}
 					}
@@ -589,11 +713,22 @@ function meshOne(data, dims) {
 			}
 		}
 	}
-	for (var i=0; i<normalList.length; ++i) {
-		// this is a lot of redundant work...
-		normalList[i].normalize();
-	}
-	//stitchSpace( false );
+	if( smoothShade)
+		for (var i=0; i<normalList.length; ++i) {
+			// this is a lot of redundant work...
+			if( showGrid ){
+				let n = normalList[i].normalBuffer;
+				let d = n[0]*n[0]+n[1]*n[1]+n[2]*n[2];
+				d = 1/Math.sqrt(d);
+				n[0]*=d;n[1]*=d;n[2]*=d;
+			}else
+				normalList[i].normalize();
+		}
+
+	if( showGrid )
+		opts.geometryHelper.markDirty();
+
+		//stitchSpace( false );
 }
 
 }
