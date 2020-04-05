@@ -5,11 +5,11 @@ const attribs = ["position","uv"
 ,"in_Color", "in_FaceColor", "in_Modulous"
 ,"normal", "in_Pow", "in_flat_color", "in_use_texture", "in_decal_texture", "in_face_index"
 ];
-const attrib_bytes =     [4,4,1,1,1,4,4,1,1,1,4]
-const attrib_sizes =     [3,2,4,4,3,3,1,1,1,1,3] // counts really
+const attrib_bytes =     [4,4, 1,1,4, 4,4,1,1,1,4]
+const attrib_sizes =     [3,2, 4,4,3, 3,1,1,1,1,3] // counts really
 const attrib_normalize = [false,false,true,true,0,0,0,0,1,0,0]
 const attrib_buftype = [Float32Array,Float32Array
-    ,Uint8Array,Uint8Array,Uint8Array
+    ,Uint8Array,Uint8Array,Float32Array
     ,Float32Array,Float32Array
     , Uint8Array,Uint8Array, Uint8Array, Uint32Array]
 
@@ -82,7 +82,7 @@ function GeometryBuffer() {
             if( att === "in_face_index")
                 attrib.count = buffer.usedFaces+1;
              else
-                attrib.count = buffer.used;
+                attrib.count = buffer.used+1;
          })
          //console.log( "dirty", this.geometry.attributes );
      }

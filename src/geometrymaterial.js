@@ -94,7 +94,7 @@ function GeometryMaterial() {
 
         ex_use_texture = in_use_texture;
         ex_flat_color = in_flat_color;
-        ex_Modulous = in_Modulous;
+        ex_Modulous = in_Modulous*3.0;
 }
 
     }
@@ -171,13 +171,13 @@ fragmentShader:`
                 }
                 else
                 {
-                    float a = mod( vertPosition.x+0.5, 1.0)-0.5;
-                    float b = mod( vertPosition.y+0.5, 1.0)-0.5;
-                    float c = mod( vertPosition.z+0.5, 1.0)-0.5;
+                    //float a = mod( vertPosition.x+0.5, 1.0)-0.5;
+                    //float b = mod( vertPosition.y+0.5, 1.0)-0.5;
+                    //float c = mod( vertPosition.z+0.5, 1.0)-0.5;
 
-                    //float a = mod(ex_Modulous.x +0.5, 1.0 )-0.5;
-                    //float b = mod(ex_Modulous.y +0.5, 1.0 )-0.5;
-                    //float c = mod(ex_Modulous.z +0.5, 1.0 )-0.5;
+                    float a = mod(ex_Modulous.x +0.5, 1.0 )-0.5;
+                    float b = mod(ex_Modulous.y +0.5, 1.0 )-0.5;
+                    float c = mod(ex_Modulous.z +0.5, 1.0 )-0.5;
 
                     float g;
                     float h;

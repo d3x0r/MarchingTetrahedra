@@ -408,7 +408,7 @@ function meshOne(data, dims) {
 									 , false // use texture
 									 , false // flat
 									 , false // decal texture?
-									 , [p[0]*3,p[1]*3,p[2]*3]  // modulous of this point.
+									 , [p[0],p[1],p[2]]  // modulous of this point.
 								);
 								points[baseHere+l] = normal.id;
 							}
@@ -431,7 +431,7 @@ function meshOne(data, dims) {
 									 , false // use texture
 									 , false // flat
 									 , false // decal texture?
-									 , [p[0]*3,p[1]*3,p[2]*3]  // modulous of this point.
+									 , [p[0],p[1],p[2]]  // modulous of this point.
 								);
 								points[baseHere+l] = normal.id;
 							}
@@ -556,9 +556,19 @@ function meshOne(data, dims) {
 										ds = 1/Math.sqrt(ds);
 										fnorm[0] *= ds;fnorm[1] *= ds;fnorm[2] *= ds;
 									}else {
-
+										fnorm[0] = vB[0]-vA[0];fnorm[1] = vB[1]-vA[1];fnorm[2] = vB[2]-vA[2];
+										tmp[0] = vC[0]-vA[0];tmp[1] = vC[1]-vA[1];tmp[2] = vC[2]-vA[2];
+										let a=fnorm[0],b=fnorm[1],c=fnorm[2];
+										fnorm[0]=fnorm[1]*tmp[2] - fnorm[2]*tmp[1];
+										fnorm[1]=fnorm[2]*tmp[0] - a      *tmp[2];
+										fnorm[2]=a      *tmp[2] - fnorm[2]*tmp[0];
+										let ds;
+										if( (ds=fnorm[0]*fnorm[0]+fnorm[1]*fnorm[1]+fnorm[2]*fnorm[2]) > 0.000001 ){
+											ds = 1/Math.sqrt(ds);
+											fnorm[0] *= ds;fnorm[1] *= ds;fnorm[2] *= ds;
+										}
 									}
-
+	
 									{
 										a1t[0]=vC[0]-vB[0];a1t[1]=vC[1]-vB[1];a1t[2]=vC[2]-vB[2];
 										a2t[0]=vA[0]-vB[0];a2t[1]=vA[1]-vB[1];a2t[2]=vA[2]-vB[2];
