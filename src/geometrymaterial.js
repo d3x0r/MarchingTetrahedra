@@ -171,9 +171,9 @@ fragmentShader:`
                 }
                 else
                 {
-                    float a = mod( vertPosition.x, 1.0)-0.5;
-                    float b = mod( vertPosition.y, 1.0)-0.5;
-                    float c = mod( vertPosition.z, 1.0)-0.5;
+                    float a = mod( vertPosition.x+0.5, 1.0)-0.5;
+                    float b = mod( vertPosition.y+0.5, 1.0)-0.5;
+                    float c = mod( vertPosition.z+0.5, 1.0)-0.5;
 
                     //float a = mod(ex_Modulous.x +0.5, 1.0 )-0.5;
                     //float b = mod(ex_Modulous.y +0.5, 1.0 )-0.5;

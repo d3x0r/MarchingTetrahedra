@@ -80,7 +80,7 @@ function GeometryBuffer() {
              attrib.needsUpdate = true;
              attrib.array = buffer[att];
             if( att === "in_face_index")
-                attrib.count = buffer.usedFaces;
+                attrib.count = buffer.usedFaces+1;
              else
                 attrib.count = buffer.used;
          })
