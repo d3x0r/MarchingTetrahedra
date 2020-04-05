@@ -55,8 +55,8 @@
 		<p>Face count: <input type="text" id="facecount" value="0"> </p>
 		<p>(Approx.) Time:<input type="text" id="meshtime" value="0"> </p>
 		<p>Inflation:<input type="range" id="inflation" value="50"> </p>
-		<p>Maximize: <input type="checkbox" id="maximize" value="checked"></p>
-		<p>Minimize: <input type="checkbox" id="minimize" value="checked"></p>
+		<p>Maximize: <input type="checkbox" id="maximize" value="checked"> - Minimize: <input type="checkbox" id="minimize" value="checked"></p>
+		<p>Outside: <input type="radio" name="filler"  id="fillOutside" value="checked"> Inside: <input type="radio" name="filler"  id="fillInside" value="checked"> - Open: <input type="radio" name="filler" id="fillOpen" value="checked"></p>
 	  </div>
 	</div>
 
@@ -89,41 +89,44 @@
 			}
 
 		  var mesher = meshers[ document.getElementById("mesher").value ]
-			, field  = testdata[ document.getElementById("datasource").value ]();
+			, field  = testdata[ document.getElementById("datasource").value ]( document.getElementById("fillOutside")?.checked?-1
+			          :document.getElementById("fillInside")?.checked?1
+			          :0
+			 );
 
-		  var start = (new Date()).getTime();
-	var inflatVal = document.getElementById( "inflation" ).value;
-	if( inflatVal < 50 )
-		inflatVal = ( 10/(60-inflatVal));
-	else 
-		inflatVal = 1+( inflatVal - 50 ) / 5;
+			var start = (new Date()).getTime();
+			var inflatVal = document.getElementById( "inflation" ).value;
+			if( inflatVal < 50 )
+				inflatVal = ( 10/(60-inflatVal));
+			else 
+				inflatVal = 1+( inflatVal - 50 ) / 5;
 
 
 
-	let maximize = document.getElementById( "maximize" ).checked;
-	let minimize = document.getElementById( "minimize" ).checked;
+			let maximize = document.getElementById( "maximize" ).checked;
+			let minimize = document.getElementById( "minimize" ).checked;
 
-	let n = 0;
-	var newData = [];
-	for( var z = 0; z < field.dims[2]; z++ ) {
-		for( var y = 0; y < field.dims[1]; y++ ) {
-			for( var x = 0; x < field.dims[0]; x++ ) {
-				var a = field.data[n];
-				if( a > 0 ) {
-					if( minimize ) {
-						newData.push( 500 );
+			let n = 0;
+			var newData = [];
+			for( var z = 0; z < field.dims[2]; z++ ) {
+				for( var y = 0; y < field.dims[1]; y++ ) {
+					for( var x = 0; x < field.dims[0]; x++ ) {
+						var a = field.data[n];
+						if( a > 0 ) {
+							if( minimize ) {
+								newData.push( 500 );
+							}
+							else if( maximize ) {
+								newData.push( 0.0000001 );
+							}
+							else {
+								newData.push( a * inflatVal );
+							}
+						}else newData.push( a );
+						n++;
 					}
-					else if( maximize ) {
-						newData.push( 0.0000001 );
-					}
-					else {
-						newData.push( a * inflatVal );
-					}
-				}else newData.push( a );
-				n++;
+				}
 			}
-		}
-	}
 
 	  var opts;
 	  var result = mesher( newData, field.dims, opts = {
@@ -155,7 +158,7 @@
 									 , false // use texture
 									 , false // flat
 									 , false // decal texture?
-									 , result.vertices[i]  // modulous of this point.
+									 , [result.vertices[i][0]+0.125,result.vertices[i][1]+0.125,result.vertices[i][2]+0.125]  // modulous of this point.
 								);
 			}
 			const cb = new THREE.Vector3(), ab = new THREE.Vector3();
@@ -178,21 +181,25 @@
 				geometryHelper.addFace( f[0], f[1],f[2], [cb.x,cb.y,cb.z]);
 			}
 			geometryHelper.markDirty();
+			document.getElementById("vertcount").value = geometryHelper.used;
+		  	document.getElementById("facecount").value = geometryHelper.usedFaces/3;
 		} else {
+			document.getElementById("vertcount").value = result.vertices.length;
+		  	document.getElementById("facecount").value = result.faces.length;
 			for(var i=0; i<result.vertices.length; ++i) {
 				var v = result.vertices[i];
 				geometry.vertices.push(new THREE.Vector3(v[0], v[1], v[2]));
 			}
 
 			for(var i=0; i<result.faces.length; ++i) {
-			var f = result.faces[i];
-			if(f.length === 3) {
-				geometry.faces.push(new THREE.Face3(f[0], f[1], f[2]));
-			} else if(f.length === 4) {
-				geometry.faces.push(new THREE.Face4(f[0], f[1], f[2], f[3]));
-			} else {
-				//Polygon needs to be subdivided
-			}
+				var f = result.faces[i];
+				if(f.length === 3) {
+					geometry.faces.push(new THREE.Face3(f[0], f[1], f[2]));
+				} else if(f.length === 4) {
+					geometry.faces.push(new THREE.Face4(f[0], f[1], f[2], f[3]));
+				} else {
+					//Polygon needs to be subdivided
+				}
 			}
 
 			var cb = new THREE.Vector3(), ab = new THREE.Vector3();
@@ -241,6 +248,11 @@
 		if( !opts.showGrid ) {
 		document.getElementById("vertcount").value = geometry.vertices.length;
 		  document.getElementById("facecount").value = geometry.faces.length;
+		}
+		else {
+			document.getElementById("vertcount").value = geometryHelper.used;
+		  	document.getElementById("facecount").value = geometryHelper.usedFaces/3;
+
 		}
 		  /*
 		  if( opts.smoothShade ){
@@ -364,7 +376,7 @@
 
 
 			//Initialize dom elements
-			testdata = createTestData();
+			testdata = createTestData(0);
 			var ds = document.getElementById("datasource");
 			for(var id in testdata) {
 			  ds.add(new Option(id, id), null);
@@ -393,6 +405,20 @@
 			is.onchange = updateMesh;
 			is = document.getElementById( "showGrid" );
 			is.onchange = updateMesh;
+			is = document.getElementById( "fillOutside" );
+			is.onchange = updateTestData;
+			is = document.getElementById( "fillInside" );
+			is.onchange = updateTestData;
+			is = document.getElementById( "fillOpen" );
+			is.onchange = updateTestData;
+			is.checked = true;
+
+			function updateTestData() {
+				testdata = createTestData( document.getElementById("fillOutside")?.checked?-1
+			          :document.getElementById("fillInside")?.checked?1
+			          :0);
+				updateMesh();
+			}
 
 			//Update mesh
 			updateMesh();
