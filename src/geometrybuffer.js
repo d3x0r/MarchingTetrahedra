@@ -5,9 +5,9 @@ const attribs = ["position","uv"
 ,"in_Color", "in_FaceColor", "in_Modulous"
 ,"normal", "in_Pow", "in_flat_color", "in_use_texture", "in_decal_texture", "in_face_index"
 ];
-const attrib_bytes =     [4,4, 1,1,4, 4,4,1,1,1,4]
-const attrib_sizes =     [3,2, 4,4,3, 3,1,1,1,1,3] // counts really
-const attrib_normalize = [false,false,true,true,0,0,0,0,1,0,0]
+const attrib_bytes =     [4,4, 1,1,4, 4,4, 1,1,1,4]
+const attrib_sizes =     [3,2, 4,4,3, 3,1, 1,1,1,3] // counts really
+const attrib_normalize = [false,false, true,true,0, true,0,0,1,0,0]
 const attrib_buftype = [Float32Array,Float32Array
     ,Uint8Array,Uint8Array,Float32Array
     ,Float32Array,Float32Array
@@ -39,6 +39,7 @@ function GeometryBuffer() {
     buffer.used = 0;
     buffer.availableFaces = 0;
     buffer.usedFaces = 0;
+    buffer.resultedPoints = [];
 
     buffer.clear = function() {
         this.used = 0;
@@ -61,6 +62,13 @@ function GeometryBuffer() {
             newbuf =   new attrib_buftype[index]( new ArrayBuffer( this.available * ( attrib_bytes[index] * attrib_sizes[index] ) ) );
             newbuf.set( buffer[att] );
             buffer[att] = newbuf;
+            // need new subarrays.
+            if( att === "normal" ) {
+                for( var p of this.resultedPoints ) p.normalBuffer = newbuf.subarray(p.id*3, p.id*3+3);
+            }
+            if( att === "position" ) {
+                for( var p of this.resultedPoints ) p.vertBuffer = newbuf.subarray(p.id*3, p.id*3+3);
+            }
           })
      };
 
@@ -80,9 +88,9 @@ function GeometryBuffer() {
              attrib.needsUpdate = true;
              attrib.array = buffer[att];
             if( att === "in_face_index")
-                attrib.count = buffer.usedFaces+1;
+                attrib.count = buffer.usedFaces;
              else
-                attrib.count = buffer.used+1;
+                attrib.count = buffer.used;
          })
          //console.log( "dirty", this.geometry.attributes );
      }
@@ -127,12 +135,13 @@ function GeometryBuffer() {
         this.in_Modulous[u3 + 0] = mod[0];
         this.in_Modulous[u3 + 1] = mod[1];
         this.in_Modulous[u3 + 2] = mod[2];
-
-        return {
+        let result = {
             id:this.used++,
             normalBuffer:this.normal.subarray(u3,u3+3),
             vertBuffer:this.position.subarray(u3,u3+3),
         }
+        this.resultedPoints.push(result);
+        return result;
     };
 
     buffer.copyPoint = function( p, n ) {
@@ -182,7 +191,7 @@ function GeometryBuffer() {
 
 
     buffer.addFace = function( a,b,c, n){
-        while( this.usedFaces >= (this.availableFaces+3))
+        while( (this.usedFaces+3) >= this.availableFaces )
             this.expandFaces();
         if(n) {
             a = this.copyPoint( a, n );

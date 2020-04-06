@@ -3,9 +3,12 @@ body {
 	padding		: 0;
 	margin		: 0;
 
-	color		: #222;
+	color		: #000;
+	-webkit-text-stroke : 2px #ffffff40;
+	text-shadow: white 0px 0px 10px;
 	background-color: #BBB;
 	font-family	: arial;
+	font-weight : 800;
 	font-size	: 100%;
 }
 #info .top {

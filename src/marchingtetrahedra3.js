@@ -110,17 +110,17 @@ var MarchingTetrahedra3 = (function() {
 			[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
 			[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
 	];
-			// index with [odd] [tet_of_cube] [0-3 vertex]
-			// result is point data rectangular offset... (until modified)
+	
+	// index with [odd] [tet_of_cube] [0-3 vertex]
+	// result is point data rectangular offset... (until modified)
 	const vertToData = [	// updated base index to resolved data cloud offset
 			[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
 			[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
 	];
 
 
-
-// indexed with [invert][face][p] [0-3]
-	const facePointIndexes = [
+	// indexed with [invert][face][tri] [0-2]
+	const facePointIndexesOriginal = [
 			[
 				[[0,1,2]],
 				[[0,1,4],[0,4,5]],
@@ -141,6 +141,7 @@ var MarchingTetrahedra3 = (function() {
 			]
 	];
 
+	
 	return function(data,dims, opts) {
 
 	let cb = new THREE.Vector3();
@@ -272,24 +273,58 @@ function meshOne(data, dims) {
 
 	// vertex paths 0-1 0-2, 0-3  1-2 2-3 3-1
 	// this is the offset from dataOffset to the related value.
-        //  index with [odd] [tet_of_cube] [0-5 line index]
-        // result is computed point cloud data offset.
-		const edgeToComp = [
-			[ [ (dim0)*9+4, (dim0)*9+1, 0          , (dim0)*9+6 , 3      , 5 ]
-			, [ (1)*9+0    , 1*9+3      , 5          , 1*9+1       , 6      , 4 ]
-			, [ 2          , 7          , 1          , 8           , 6      , 3 ]
-			, [ (dim0)*9+7, 8          , (dim0)*9+6, (1)*9+2     , (1)*9+3, (1+dim0)*9+1 ]
-			, [ 3, 6, 5, 8, (1)*9+3, (dim0)*9+6]
-			],
 
-			[ [0, 1, 4, 3, 6, 5]
-			, [ (1)*9+0, (1+dim0)*9+1, (dim0)*9 + 4, 1*9+3, (dim0)*9+6, 5 ]
-			, [ (dim0)*9+7, 2, (dim0)*9+1, 8, 3, (dim0)*9+6 ]
-			, [ 8, 7, 6, (1)*9+2, (1)*9+1, (1)*9+3 ]
-			, [ 5, 6, (1)*9+3, 3, 8, (dim0)*9+6 ]
-			],
-		]
+	// index with [odd] [tet_of_cube] [0-5 line index]
+	// result is composite point data offset.
+	const edgeToComp = [
+		[ [ (dim0)*9+4, (dim0)*9+1, 0          , (dim0)*9+6 , 3      , 5 ]
+		, [ (1)*9+0    , 1*9+3      , 5          , 1*9+1       , 6      , 4 ]
+		, [ 2          , 7          , 1          , 8           , 6      , 3 ]
+		, [ (dim0)*9+7, 8          , (dim0)*9+6, (1)*9+2     , (1)*9+3, (1+dim0)*9+1 ]
+		, [ 3, 6, 5, 8, (1)*9+3, (dim0)*9+6]
+		],
 
+		[ [0, 1, 4, 3, 6, 5]
+		, [ (1)*9+0, (1+dim0)*9+1, (dim0)*9 + 4, 1*9+3, (dim0)*9+6, 5 ]
+		, [ (dim0)*9+7, 2, (dim0)*9+1, 8, 3, (dim0)*9+6 ]
+		, [ 8, 7, 6, (1)*9+2, (1)*9+1, (1)*9+3 ]
+		, [ 5, 6, (1)*9+3, 3, 8, (dim0)*9+6 ]
+		],
+	]
+
+	// index with [invert][output_face_type][0-1 triangle count][0-3 triangle point]
+	const facePointIndexes = [ 
+	];
+
+	for( let odd=0; odd < 2; odd++) {
+		let t; 
+		facePointIndexes.push( t = [] )
+		for( let tet = 0; tet < 5; tet++ ){
+			t.push(  [
+				[ [ [edgeToComp[odd][tet][facePointIndexesOriginal[0][0][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][0][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][0][0][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[0][1][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][1][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][1][0][2]]]
+				, [  edgeToComp[odd][tet][facePointIndexesOriginal[0][1][1][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][1][1][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][1][1][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[0][2][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][2][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][2][0][2]]]
+				, [  edgeToComp[odd][tet][facePointIndexesOriginal[0][2][1][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][2][1][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][2][1][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[0][3][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][3][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][3][0][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[0][4][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][4][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][4][0][2]]]
+				, [  edgeToComp[odd][tet][facePointIndexesOriginal[0][4][1][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][4][1][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][4][1][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[0][5][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][5][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][5][0][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[0][6][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[0][6][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[0][6][0][2]]] ]
+			]
+			, [ [   [edgeToComp[odd][tet][facePointIndexesOriginal[1][0][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][0][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][0][0][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[1][1][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][1][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][1][0][2]]]
+				, [  edgeToComp[odd][tet][facePointIndexesOriginal[1][1][1][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][1][1][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][1][1][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[1][2][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][2][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][2][0][2]]]
+				, [  edgeToComp[odd][tet][facePointIndexesOriginal[1][2][1][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][2][1][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][2][1][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[1][3][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][3][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][3][0][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[1][4][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][4][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][4][0][2]]]
+				, [  edgeToComp[odd][tet][facePointIndexesOriginal[1][4][1][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][4][1][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][4][1][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[1][5][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][5][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][5][0][2]]] ]
+				, [ [edgeToComp[odd][tet][facePointIndexesOriginal[1][6][0][0]],edgeToComp[odd][tet][facePointIndexesOriginal[1][6][0][1]],edgeToComp[odd][tet][facePointIndexesOriginal[1][6][0][2]]] ]
+			] ] )	
+		}
+	}
 	for( let a = 0; a < 2; a++ ) for( let b = 0; b < 5; b++ ) for( let c = 0; c < 4; c++ ) vertToData[a][b][c] = dataOffset[vertToDataOrig[a][b][c]];
 	if( dim0*dim1*9 > sizes ) {
 		sizes = dim0 * dim1 * 9;
@@ -401,7 +436,7 @@ function meshOne(data, dims) {
 									, cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t ];
 								normal = opts.geometryHelper.addPoint( p
 									 , null, null // texture, and uv[1,0] 
-									 , [0x50,0x00,0x50,255] // edge color
+									 , [0xA0,0x00,0xA0,255] // edge color
 									 , [0x11, 0x11, 0x11, 255] // face color
 									 , [0,0,0] // normal *needs to be updated*;
 									 , 100 // pow
@@ -424,7 +459,7 @@ function meshOne(data, dims) {
 								     , cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t ];
 								normal = opts.geometryHelper.addPoint( p
 									 , null, null // texture, and uv[1,0] 
-									 , [0x50,0x00,0x50,255] // edge color
+									 , [0xA0,0x00,0xA0,255] // edge color
 									 , [0x11, 0x11, 0x11, 255] // face color
 									 , [0,0,0] // normal *needs to be updated*;
 									 , 100 // pow
@@ -440,7 +475,14 @@ function meshOne(data, dims) {
 										,cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
 										, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t )),vertices.length-1 );
 						}
-						normalList.push( normals[baseHere+l] = ( normal || new THREE.Vector3(0,0,0) ) );
+						if( normal ){
+							normal.adds = 0;
+							normalList.push( normals[baseHere+l] = ( normal || new THREE.Vector3(0,0,0) ) );
+						}
+						else {
+							normalList.push( normal = normals[baseHere+l] = ( new THREE.Vector3(0,0,0) ) );
+							normal.adds = 0;
+						}
 						crosses[baseHere+l] = 1;
 						bits[x+y*dim0] = 1; // set any 1 bit is set here.
 					}
@@ -525,10 +567,11 @@ function meshOne(data, dims) {
 						}
 					}
 					if( useFace-- ) {
-						for( var tri=0;tri< facePointIndexes[invert][useFace].length; tri++ ){
-							const ai = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][0]];
-							const bi = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][1]];
-							const ci = baseOffset+edgeToComp[odd][tet][facePointIndexes[invert][useFace][tri][2]] ;
+						const fpi = facePointIndexes[odd][tet][invert][useFace];
+						for( var tri=0;tri< fpi.length; tri++ ){
+							const ai = baseOffset+fpi[tri][0];
+							const bi = baseOffset+fpi[tri][1];
+							const ci = baseOffset+fpi[tri][2];
 						
 							if( smoothShade ) {
 								//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
@@ -537,6 +580,7 @@ function meshOne(data, dims) {
 
 								if( opts.geometryHelper )	{
 
+									// a - b - c    c->b a->b
 									const vA = normals[ai].vertBuffer;
 									const vB = normals[bi].vertBuffer;
 									const vC = normals[ci].vertBuffer;
@@ -544,59 +588,67 @@ function meshOne(data, dims) {
 									const tmp = [0,0,0];
 									const a1t = [0,0,0];
 									const a2t = [0,0,0];
+									if( ( vA[0] === vB[0] && vA[0] === vC[0] )
+									   && ( vA[1] === vB[1] && vA[1] === vC[1] )
+									   && ( vA[2] === vB[2] && vA[2] === vC[2] ) ) {
+									   //console.log( "zero size tri-face")
+									   continue;
+									}
 									//if( !vA || !vB || !vC ) debugger;
 									fnorm[0] = vC[0]-vB[0];fnorm[1] = vC[1]-vB[1];fnorm[2] = vC[2]-vB[2];
 									tmp[0] = vA[0]-vB[0];tmp[1] = vA[1]-vB[1];tmp[2] = vA[2]-vB[2];
-									let a=fnorm[0],b=fnorm[1],c=fnorm[2];
+									let a=fnorm[0], b=fnorm[1];
 									fnorm[0]=fnorm[1]*tmp[2] - fnorm[2]*tmp[1];
-									fnorm[1]=fnorm[2]*tmp[0] - a      *tmp[2];
-									fnorm[2]=a      *tmp[2] - fnorm[2]*tmp[0];
+									fnorm[1]=fnorm[2]*tmp[0] - a       *tmp[2];
+									fnorm[2]=a       *tmp[1] - b       *tmp[0];
 									let ds;
 									if( (ds=fnorm[0]*fnorm[0]+fnorm[1]*fnorm[1]+fnorm[2]*fnorm[2]) > 0.000001 ){
 										ds = 1/Math.sqrt(ds);
 										fnorm[0] *= ds;fnorm[1] *= ds;fnorm[2] *= ds;
 									}else {
+										// b->A  c->A
 										fnorm[0] = vB[0]-vA[0];fnorm[1] = vB[1]-vA[1];fnorm[2] = vB[2]-vA[2];
 										tmp[0] = vC[0]-vA[0];tmp[1] = vC[1]-vA[1];tmp[2] = vC[2]-vA[2];
-										let a=fnorm[0],b=fnorm[1],c=fnorm[2];
+										let a=fnorm[0];
 										fnorm[0]=fnorm[1]*tmp[2] - fnorm[2]*tmp[1];
-										fnorm[1]=fnorm[2]*tmp[0] - a      *tmp[2];
-										fnorm[2]=a      *tmp[2] - fnorm[2]*tmp[0];
+										fnorm[1]=fnorm[2]*tmp[0] - a       *tmp[2];
+										fnorm[2]=a       *tmp[1] - b       *tmp[0];
 										let ds;
 										if( (ds=fnorm[0]*fnorm[0]+fnorm[1]*fnorm[1]+fnorm[2]*fnorm[2]) > 0.000001 ){
-											ds = 1/Math.sqrt(ds);
+											ds = -1/Math.sqrt(ds);
 											fnorm[0] *= ds;fnorm[1] *= ds;fnorm[2] *= ds;
 										}
 									}
 	
 									{
-										a1t[0]=vC[0]-vB[0];a1t[1]=vC[1]-vB[1];a1t[2]=vC[2]-vB[2];
-										a2t[0]=vA[0]-vB[0];a2t[1]=vA[1]-vB[1];a2t[2]=vA[2]-vB[2];
-
-										let angle = 0;
-										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.0001 && 
-										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.0001 ) {
-												angle = 2 * Math.acos(Math.abs( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2] ) ))
-											//angle = a1t.angleTo( a2t );
-										}
-
-										normals[bi].normalBuffer[0] += fnorm[0]*angle;
-										normals[bi].normalBuffer[1] += fnorm[1]*angle;
-										normals[bi].normalBuffer[2] += fnorm[2]*angle;
-									}
-
-									{
 										a1t[0]=vB[0]-vA[0];a1t[1]=vB[1]-vA[1];a1t[2]=vB[2]-vA[2];
 										a2t[0]=vC[0]-vA[0];a2t[1]=vC[1]-vA[1];a2t[2]=vC[2]-vA[2];
 
 										let angle = 0;
-										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.0001 && 
-										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.0001 )
-												angle = 2 * Math.acos(Math.abs( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2] ) ))
+										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.000001 && 
+										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.000001 )
+											angle = 2*Math.acos( clamp((a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2])/(Math.sqrt(a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2])*Math.sqrt(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) ), 1.0 ));
 											//angle = a1t.angleTo( a2t );
+										//console.log( "ai angle:", angle, fnorm );
 										normals[ai].normalBuffer[0] += fnorm[0]*angle;
 										normals[ai].normalBuffer[1] += fnorm[1]*angle;
 										normals[ai].normalBuffer[2] += fnorm[2]*angle;
+									}
+
+									{
+										a1t[0]=vC[0]-vB[0];a1t[1]=vC[1]-vB[1];a1t[2]=vC[2]-vB[2];
+										a2t[0]=vA[0]-vB[0];a2t[1]=vA[1]-vB[1];a2t[2]=vA[2]-vB[2];
+										let angle = 0;
+										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.000001 && 
+										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.000001 ) {
+												angle = 2*Math.acos( clamp((a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2])/(Math.sqrt(a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2])*Math.sqrt(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) ), 1.0) );
+												//angle = a1t.angleTo( a2t );
+										}
+
+										//console.log( "bi angle:", angle, fnorm );
+										normals[bi].normalBuffer[0] += fnorm[0]*angle;
+										normals[bi].normalBuffer[1] += fnorm[1]*angle;
+										normals[bi].normalBuffer[2] += fnorm[2]*angle;
 									}
 
 									{
@@ -604,17 +656,34 @@ function meshOne(data, dims) {
 										a2t[0]=vB[0]-vC[0];a2t[1]=vB[1]-vC[1];a2t[2]=vB[2]-vC[2];
 
 										let angle = 0;
-										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.0001 && 
-										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.0001 )
-												angle = 2 * Math.acos(Math.abs( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2] ) ))
+										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.000001 && 
+											(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.000001 )
+											angle = 2*Math.acos( clamp((a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2])/(Math.sqrt(a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2])*Math.sqrt(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) ), 1.0) );
+											//angle = 2 * Math.acos(clamp( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2]),1))
 											//angle = a1t.angleTo( a2t );
+										//console.log( "ci angle:", angle, fnorm, a1t, a2t );
 										normals[ci].normalBuffer[0] += fnorm[0]*angle;
 										normals[ci].normalBuffer[1] += fnorm[1]*angle;
 										normals[ci].normalBuffer[2] += fnorm[2]*angle;
 									}
-									opts.geometryHelper.addFace( points[ai], points[bi], points[ci] );
+									normals[ai].adds++;
+									normals[bi].adds++;
+									normals[ci].adds++;
+									//console.log( "updated vertex normal a", ai, normals[ai].id, normals[ai].normalBuffer );
+									//console.log( "updated vertex normal b", bi, normals[bi].id, normals[bi].normalBuffer );
+									//console.log( "updated vertex normal c", ci, normals[ci].id, normals[ci].normalBuffer );
+									if( isNaN(normals[ci].normalBuffer[0]) || isNaN(normals[ci].normalBuffer[1]) || isNaN(normals[ci].normalBuffer[2]) )debugger;
+									if( isNaN(normals[bi].normalBuffer[0]) || isNaN(normals[bi].normalBuffer[1]) || isNaN(normals[bi].normalBuffer[2]) )debugger;
+									if( isNaN(normals[ai].normalBuffer[0]) || isNaN(normals[ai].normalBuffer[1]) || isNaN(normals[ai].normalBuffer[2]) )debugger;
+									
+									//if( normals[ci].adds >= 3 &&  !normals[ci].normalBuffer[0] && !normals[ci].normalBuffer[1] && !normals[ci].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
+									//if( normals[bi].adds >= 3 &&  !normals[bi].normalBuffer[0] && !normals[bi].normalBuffer[1] && !normals[bi].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
+									//if( normals[ai].adds >= 3 &&  !normals[ai].normalBuffer[0] && !normals[ai].normalBuffer[1] && !normals[ai].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
+									//opts.geometryHelper.addFace( points[ai], points[bi], points[ci] );
+									opts.geometryHelper.addFace( normals[ai].id, normals[bi].id, normals[ci].id );
 
 								}else{
+									// sorry; in this mode, normals is just a THREEE.vector3.
 									faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci]
 												,[normals[ai],normals[bi],normals[ci]] )
 									);
@@ -622,6 +691,12 @@ function meshOne(data, dims) {
 									const vA = vertices[f.a];
 									const vB = vertices[f.b];
 									const vC = vertices[f.c];
+									if( ( vA.x === vB.x && vA.x === vC.x )
+									   && ( vA.y === vB.y && vA.y === vC.y )
+									   && ( vA.z === vB.z && vA.z === vC.z ) ) {
+										//console.log( "zero size tri-face")
+									   continue;
+									}
 									//if( !vA || !vB || !vC ) debugger;
 									cb.subVectors(vC, vB);
 									ab.subVectors(vA, vB);
@@ -649,7 +724,6 @@ function meshOne(data, dims) {
 										if( a1t.length() > 0 && a2t.length()>0 ){
 											angle = a1t.angleTo( a2t );
 										}
-										cb.multiplyScalar(angle);
 										normTmp.copy(cb).multiplyScalar(angle);
 										normals[ai].add( normTmp );
 									}
@@ -664,7 +738,7 @@ function meshOne(data, dims) {
 										a2t.subVectors(vB,vC);
 										let angle = 0;
 										if( a1t.length() > 0 && a2t.length()>0 ){
-										angle = a1t.angleTo( a2t );
+											angle = a1t.angleTo( a2t );
 										}
 										cb.multiplyScalar(angle);
 	
@@ -682,21 +756,23 @@ function meshOne(data, dims) {
 									//if( !vA || !vB || !vC ) debugger;
 									norm[0] = vC[0]-vB[0];norm[1] = vC[1]-vB[1];norm[2] = vC[2]-vB[2];
 									tmp[0] = vA[0]-vB[0];tmp[1] = vA[1]-vB[1];tmp[2] = vA[2]-vB[2];
-									let a=norm[0],b=norm[1],c=norm[2];
-									norm[0]=norm[2]*tmp[3] - norm[z]*tmp[2];
+									let a=norm[0], b = norm[1];
+									norm[0]=norm[1]*tmp[2] - norm[2]*tmp[1];
 									norm[1]=norm[2]*tmp[0] - a      *tmp[2];
-									norm[2]=a      *tmp[2] - norm[2]*tmp[0];
+									norm[2]=a      *tmp[1] - b*tmp[0];
 									let ds;
 									if( (ds=norm[0]*norm[0]+norm[1]*norm[1]+norm[2]*norm[2]) < 0.01 ){
 										norm[0] = vB[0]-vA[0];norm[1] = vB[1]-vA[1];norm[2] = vB[2]-vA[2];
 										tmp[0] = vC[0]-vA[0];tmp[1] = vC[1]-vA[1];tmp[2] = vC[2]-vA[2];
-										let a=norm[0],b=norm[1],c=norm[2];
-										norm[0]=norm[2]*tmp[3] - norm[z]*tmp[2];
+										let a=norm[0], b = norm[1];
+										norm[0]=norm[1]*tmp[2] - norm[2]*tmp[1];
 										norm[1]=norm[2]*tmp[0] - a*tmp[2];
-										norm[2]=a      *tmp[2] - norm[2]*tmp[0];
+										norm[2]=a      *tmp[1] - b*tmp[0];
 										ds=norm[0]*norm[0]+norm[1]*norm[1]+norm[2]*norm[2];
 									}
-									norm[0] *= 1/Math.sqrt(ds);norm[1] *= 1/Math.sqrt(ds);norm[2] *= 1/Math.sqrt(ds);
+									ds = 1/Math.sqrt(ds);
+									norm[0] *= ds;norm[1] *= ds;norm[2] *= ds;
+
 									opts.geometryHelper.addFace( points[ai], points[bi], points[ci]
 												, norm );
 								}else {
@@ -727,18 +803,23 @@ function meshOne(data, dims) {
 		for (var i=0; i<normalList.length; ++i) {
 			// this is a lot of redundant work...
 			if( showGrid ){
-				let n = normalList[i].normalBuffer;
-				let d = n[0]*n[0]+n[1]*n[1]+n[2]*n[2];
-				d = 1/Math.sqrt(d);
-				n[0]*=d;n[1]*=d;n[2]*=d;
+				//if( !normalList[i].normalBuffer[0] && !normalList[i].normalBuffer[1] && !normalList[i].normalBuffer[2] ) debugger;
+				//let n = normalList[i].normalBuffer;
+				//let d = n[0]*n[0]+n[1]*n[1]+n[2]*n[2];
+				//d = 1/Math.sqrt(d);
+				//n[0]*=d;n[1]*=d;n[2]*=d;
 			}else
-				normalList[i].normalize();
+				;//normalList[i].normalize();
 		}
 
 	if( showGrid )
 		opts.geometryHelper.markDirty();
 
 		//stitchSpace( false );
+
+		function clamp(a,b) {
+			if( a < b ) return a; return b;
+		}
 }
 
 }
