@@ -244,7 +244,7 @@ var MarchingTetrahedra3 = (function() {
 	patchOffset[2] = 0;
 
 	meshOne( data,dims );
-	return null;//{ vertices: vertices, faces: faces };
+	return null;
 
 
 function meshOne(data, dims) {
@@ -763,7 +763,7 @@ function meshOne(data, dims) {
 										v_a1t.subVectors(vA,vC);
 										v_a2t.subVectors(vB,vC);
 										let angle = 0;
-										if( a1t.length() > 0 && v_a2t.length()>0 ){
+										if( v_a1t.length() > 0 && v_a2t.length()>0 ){
 											angle = v_a1t.angleTo( v_a2t );
 										}
 										v_cb.multiplyScalar(angle);
