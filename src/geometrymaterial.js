@@ -261,9 +261,9 @@ fragmentShader:`
 
 /*
 #if !MORE_ROUNDED
-              g = sqrt((a*a+b*b)/2);
+              g = sqrt((a*a+b*b+c*c)/3);
               h = pow(g,200.0) * 0.5;  // up to 600 even works...
-              g = pow( ( max(a,b)),400);
+              g = pow( ( max(a,b,c)),400);
               h = (g+h);
               gl_FragColor = vec4( h * in_Color.rgb, in_Color.a ) ;
 #else

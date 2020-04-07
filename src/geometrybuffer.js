@@ -2,16 +2,18 @@
 import "./three.min.js"
 
 const attribs = ["position","uv"
-,"in_Color", "in_FaceColor", "in_Modulous"
-,"normal", "in_Pow", "in_flat_color", "in_use_texture", "in_decal_texture", "in_face_index"
-];
-const attrib_bytes =     [4,4, 1,1,4, 4,4, 1,1,1,4]
-const attrib_sizes =     [3,2, 4,4,3, 3,1, 1,1,1,3] // counts really
-const attrib_normalize = [false,false, true,true,0, true,0,0,1,0,0]
+, "in_Color", "in_FaceColor", "in_Modulous"
+, "normal", "in_Pow", "in_flat_color"
+, "in_use_texture", "in_decal_texture", "in_face_index"
+, "copies" 
+];  
+const attrib_bytes =     [4,4, 1,1,4, 4,4, 1,1,1,4 , 1]
+const attrib_sizes =     [3,2, 4,4,3, 3,1, 1,1,1,3 , 1] // counts really
+const attrib_normalize = [false,false, true,true,0, true,0, 0,1,0,0, 0]
 const attrib_buftype = [Float32Array,Float32Array
     ,Uint8Array,Uint8Array,Float32Array
     ,Float32Array,Float32Array
-    , Uint8Array,Uint8Array, Uint8Array, Uint32Array]
+    , Uint8Array,Uint8Array, Uint8Array, Uint32Array, Uint8Array ]
 
 THREE.GridGeometryBuffer = GeometryBuffer;
 
@@ -24,12 +26,13 @@ function GeometryBuffer() {
      	};
     // create a simple square shape. We duplicate the top left and bottom right
     // vertices because each vertex needs to appear once per triangle.
-    buffer.position = new Float32Array( [] );
-    buffer.uv = new Float32Array( [] );
-    buffer.in_Color = new Uint8Array( [] );
+    buffer.position     = new Float32Array( [] );
+    buffer.copies       = new Uint8Array( [] );
+    buffer.uv           = new Float32Array( [] );
+    buffer.in_Color     = new Uint8Array( [] );
     buffer.in_FaceColor = new Uint8Array( [] );
-    buffer.normal = new Float32Array( [] );
-    buffer.in_Pow = new Float32Array( [] );
+    buffer.normal       = new Float32Array( [] );
+    buffer.in_Pow       = new Float32Array( [] );
     buffer.in_use_texture = new Uint8Array( [] );
     buffer.in_flat_color = new Uint8Array( [] );
     buffer.in_decal_texture = new Uint8Array( [] );
@@ -109,6 +112,7 @@ function GeometryBuffer() {
             this.uv[u2+0] = 0;
             this.uv[u2+1] = 0;
         }
+	this.copies[this.used] = 0;
         this.position[u3 + 0 ] = v[0];
         this.position[u3 + 1 ] = v[1]
         this.position[u3 + 2 ] = v[2]
@@ -145,11 +149,18 @@ function GeometryBuffer() {
     };
 
     buffer.copyPoint = function( p, n ) {
+	if( n && !this.copies[this.used]++ ) {
+	        this.normal[p*3 + 0] = n[0];
+        	this.normal[p*3 + 1] = n[1];
+	        this.normal[p*3 + 2] = n[2];		
+		return p; // first 'copy' doesn't need to be copied.
+	}
         if( this.used >= this.available )
            this.expand();
            const u2 = this.used * 2;
            const u3 = this.used * 3;
            const u4 = this.used * 4;
+
 
         this.uv[u2+0] = this.uv[p*2+0];
         this.uv[u2+1] = this.uv[p*2+1];

@@ -24,10 +24,10 @@
  * Marching Tetrahedra in Javascript
  *
  * Based on Unique Research
+ *   - Carbon atom latice in diamond crystal; hence (DCL - Diamond Crystal Lattice)
  *
- * (Several bug fixes were made to deal with oriented faces)
  *
- * Javascript port by d3x0r
+ * Javascript by d3x0r
  */
 const debug_ = false;
 const zero_is_outside = true;
@@ -60,7 +60,9 @@ this is the vertex references on the right, and which 'vert N' applies.
 	     \|/
 	      .
 
-
+	// of all combinations of bits in crossings is 6 bits per tetrahedron,
+	// these are the only valid combinations.
+	// (16 bits per cell)
 	const validCombinations = [
 		{ val:[1,1,1,0,0,0], // valid (vert 0, 0,1,2)   0 in, 0 out
 		},
@@ -82,44 +84,79 @@ this is the vertex references on the right, and which 'vert N' applies.
 
 var MarchingTetrahedra3 = (function() {
 	// static working buffers
+	const highDef = false;
+
 	var sizes = 0;
 	const pointHolder = [null,null];
 	const normalHolder = [[],[]];
 	const crossHolder = [null,null];
-	var bits = null;
-	const highDef = false;
-
+	var bits = null; // single array of true/false per cube-cell indicating at least 1 cross happened
+	
+	// basis cube
 	const geom = [
 		[0,0,0],  // bottom layer
-			[1,0,0],
-			[0,1,0],
-			[1,1,0],
-			[0,0,1],  // 5 top layer
-			[1,0,1],   // 6
-			[0,1,1],   // 7
-			[1,1,1],   // 8
+		[1,0,0],
+		[0,1,0],
+		[1,1,0],
+		[0,0,1],  // 5 top layer
+		[1,0,1],   // 6
+		[0,1,1],   // 7
+		[1,1,1],   // 8
 	]
 
+	// these are the 9 computed lines per cell.
+	// the numbers are the indexes of the point in the computed layer map (tesselation-5tets-plane.png)
+	// every other cell has a different direction of the diagonals.
 	const linesOddMin =  [ [0,2],[0,4],[4,6],[2,4],  [0,1],[1,2],[1,4]  , [4,5],[4,7] ];
 	const linesEvenMin = [ [0,2],[0,4],[4,6],[0,6],  [0,1],[0,3],[0,5]  , [4,5],[5,6] ];
 	const linesMin = [linesEvenMin,linesOddMin];
 
+	// this is the running center of the faces being generated - center of the cell being computed.
 	const cellOrigin = [0,0,0];
+	// this is an offset on the whole patch; this is used for stitching additional padding
 	const patchOffset = [0,0,0];
+
+	// see next comment...
 	const vertToDataOrig = [
 			[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
 			[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
 	];
 	
+	// these is the point orders of the tetrahedra. (first triangle in comments at top)
+	// these can be changed to match the original information on the wikipedia marching-tetrahedra page.
+	// the following array is modified so the result is the actual offset in the computed data plane;
+	// it is computed from the above, original, array.
+
 	// index with [odd] [tet_of_cube] [0-3 vertex]
 	// result is point data rectangular offset... (until modified)
 	const vertToData = [	// updated base index to resolved data cloud offset
 			[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
 			[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
 	];
+	
+	// these are short term working variables
+	// reduces number of temporary arrays created.
+	const pointOutputHolder = [0,0,0];
+	// face normal - base direction to add normal, scales by angle 
+	const fnorm = [0,0,0];
+	// used to compute cross product for angle between faces
+	const tmp = [0,0,0];
+	// used to compute angle between faces, are two direction vectors from a point
+	const a1t = [0,0,0];
+	const a2t = [0,0,0];
 
+	// these are used for the non-geometry-helper output
+	const v_cb = new THREE.Vector3();
+	const v_ab = new THREE.Vector3()
+	const v_normTmp = new THREE.Vector3();
+	// used to compute angle between faces, are two direction vectors from a point
+	const v_a1t = new THREE.Vector3();
+	const v_a2t = new THREE.Vector3();
 
-	// indexed with [invert][face][tri] [0-2]
+	// a tetrahedra has 6 crossing values
+	// the result of this is the index into that ordered list of intersecionts (second triangle in comments at top)
+
+	// indexed with [invert][face][0-1 tri/quad] [0-2]
 	const facePointIndexesOriginal = [
 			[
 				[[0,1,2]],
@@ -141,22 +178,19 @@ var MarchingTetrahedra3 = (function() {
 			]
 	];
 
-	
+
+//----------------------------------------------------------
+//  This is the real working fucntion; the above is just
+//  static data in the function context; instance data for this function.
 	return function(data,dims, opts) {
 
-	let cb = new THREE.Vector3();
-	let ab = new THREE.Vector3()
-	let normTmp = new THREE.Vector3();
-
-	let a1t = new THREE.Vector3();
-	let a2t = new THREE.Vector3();
-	let a3t = new THREE.Vector3();
 
 	var vertices = opts.vertices || []
 	, faces = opts.faces || [];
 	var smoothShade = opts.smoothShade || false;
 	var newData = [];
 	const showGrid = opts.showGrid;
+// ---------------------- UNUSED ----------------------  doubles the data point space with halfway points.
 	if( highDef ){
 		let n = 0;
 		for( var z = 0; z < (dims[2]*2-1); z++ ){
@@ -200,13 +234,11 @@ var MarchingTetrahedra3 = (function() {
 		dims = [dims[0] * 2 - 1, dims[1] * 2 - 1, dims[2] * 2 - 1];
 		data = newData;
 	}
+// --------------- END UNUSED POINT DOUBLING --------------------------------------
+
 	var stitching = false;
-		if( !stitching ){
-			//for( var n = 0; n < dims[0]*dims[1]*dims[2]; n++ ) data[n] = Math.sin(n/40);//Math.random() - 0.2;
-			//for( var z = 0; z < dims[2]; z++ ) for( var y = 0; y < dims[1]; y++ ) for( var x = 0; x < dims[0]; x++ ) {
-			//	data[x+y*dims[0]+z*dims[0]*dims[1]] = Math.sin(x/5)*5 - Math.cos( y/10 )*5 + (10-z);
-			//}
-		}
+	
+	// reset the patch offset.
 	patchOffset[0] = 0;
 	patchOffset[1] = 0;
 	patchOffset[2] = 0;
@@ -216,8 +248,10 @@ var MarchingTetrahedra3 = (function() {
 
 
 function meshOne(data, dims) {
-	const normalList = [];
 
+// -------------------- Stitch Extra space on the side faces (unused) ------------------
+//  generates a new pointcloud mesh - possibly from other near pointclouds to generate mating
+//  edges - or padding arond the ouside if in isolation.
 	function stitchSpace(empty) {
 		if( stitching ) return;
 		stitching = true;
@@ -264,6 +298,8 @@ function meshOne(data, dims) {
 		stitching = false;
 	}
 
+// --------------------- End Stitch Extra Space (unused) -------------------
+
 	// values input to this are in 2 planes for lower and upper values
 
 	const dim0 = dims[0];
@@ -292,7 +328,9 @@ function meshOne(data, dims) {
 		],
 	]
 
-	// index with [invert][output_face_type][0-1 triangle count][0-3 triangle point]
+	// this is a computed lookup from facePointIndexes ([invert][output_face_type][0-1 triangle count][0-3 triangle point index]
+	// it is actually edgeToComp[odd][tet][  FPI[invert][face_type][0-1][point indexes] ]
+	// index with [odd][tet][invert][output_face_type][0-1 triangle count][0-3 triangle point index]
 	const facePointIndexes = [ 
 	];
 
@@ -336,28 +374,33 @@ function meshOne(data, dims) {
 		for( let zz = normalHolder[0].length; zz < sizes; zz++ ) normalHolder[0].push( null );
 		for( let zz = normalHolder[1].length; zz < sizes; zz++ ) normalHolder[1].push( null );
 	}
+	
+	// all work space has been allocated by this point.
+	// now, for each layer, compute inside-outside crossings ('cross').. which interestingly relates to 'cross product' but in a 2D way...
 
 
-	for( var z = 0; z < dim2-1; z++ ) {
-
+	for( var z = 0; z < dim2; z++ ) {
 		let tmp;
 		tmp = pointHolder[0]; pointHolder[0] = pointHolder[1]; pointHolder[1] = tmp;
 		tmp = crossHolder[0]; crossHolder[0] = crossHolder[1]; crossHolder[1] = tmp;
 		tmp = normalHolder[0]; normalHolder[0] = normalHolder[1]; normalHolder[1] = tmp;
 	
-		const points_ = pointHolder[1];
+		const points_  = pointHolder[1];
 		const crosses_ = crossHolder[1];
 		const normals_ = normalHolder[1];
-		const points = pointHolder[0];//new Array((dim0+1)+(dim1+1)*9);
+		const points  = pointHolder[0];//new Array((dim0+1)+(dim1+1)*9);
 		const normals = normalHolder[0];
-		//points.length = 0;
-		let crosses = crossHolder[0];
-		//crosses.length = 0;
+		const crosses = crossHolder[0];
 	
 		let odd = 0;
 		let zOdd = z & 1;
-		//if( z !== 5 ) return;
 		cellOrigin[2] = patchOffset[2] + z-0.5;
+
+		// compute one layer (x by y) intersections (cross from inside to outside).
+		// each cell individually has 16 intersections
+		// the first cell needs 9 intersections computed; the subsequent cells providing the computation for the 7 'missing'
+		// 3 intersections per cell after the first layer can be copied; but shift in position (moving from the top to the bottom)
+		// 
 		for( var y = 0; y < dim1; y++ ) {
 			cellOrigin[1] = patchOffset[1] + y-0.5;
 			for( var x = 0; x < dim0; x++ ) {
@@ -430,11 +473,12 @@ function meshOne(data, dims) {
 						//console.log( "x, y is a cross:", (x+y*dim0)*9, crosses.length, l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` );
 						if( e <= 0 ) {
 							(t = -e/(d-e));
+// --V-V-V-V-V-V-V-V-- CREATE OUTPUT POINT(VERTEX) HERE --V-V-V-V-V-V-V-V--
 							if( opts.geometryHelper ){
-								var p = [cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t
-									, cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t
-									, cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t ];
-								normal = opts.geometryHelper.addPoint( p
+								pointOutputHolder[0] = cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t;
+								pointOutputHolder[1] = cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t;
+								pointOutputHolder[2] = cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t;
+								normal = opts.geometryHelper.addPoint( pointOutputHolder
 									 , null, null // texture, and uv[1,0] 
 									 , [0xA0,0x00,0xA0,255] // edge color
 									 , [0x11, 0x11, 0x11, 255] // face color
@@ -443,7 +487,7 @@ function meshOne(data, dims) {
 									 , false // use texture
 									 , false // flat
 									 , false // decal texture?
-									 , [p[0],p[1],p[2]]  // modulous of this point.
+									 , pointOutputHolder  // modulous of this point.
 								);
 								points[baseHere+l] = normal.id;
 							}
@@ -451,13 +495,15 @@ function meshOne(data, dims) {
 								points[baseHere+l] = (vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p1][0]+( geom[p0][0]- geom[p1][0])* t
 								           , cellOrigin[1]+ geom[p1][1]+( geom[p0][1]- geom[p1][1])* t
 								           , cellOrigin[2]+ geom[p1][2]+( geom[p0][2]- geom[p1][2])* t )),vertices.length-1);
+// --^-^-^-^-^-^-- END OUTPUT POINT(VERTEX) HERE --^-^-^-^-^-^--
 						} else {
 							(t = -d/(e-d));
+// --V-V-V-V-V-V-V-V-- OUTPUT POINT 2 HERE --V-V-V-V-V-V-V-V--
 							if( opts.geometryHelper ){
-								var p = [cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t
-								     , cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
-								     , cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t ];
-								normal = opts.geometryHelper.addPoint( p
+								pointOutputHolder[0] = cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t;
+								pointOutputHolder[1] = cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t;
+								pointOutputHolder[2] = cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t;
+								normal = opts.geometryHelper.addPoint( pointOutputHolder
 									 , null, null // texture, and uv[1,0] 
 									 , [0xA0,0x00,0xA0,255] // edge color
 									 , [0x11, 0x11, 0x11, 255] // face color
@@ -466,7 +512,7 @@ function meshOne(data, dims) {
 									 , false // use texture
 									 , false // flat
 									 , false // decal texture?
-									 , [p[0],p[1],p[2]]  // modulous of this point.
+									 , pointOutputHolder  // modulous of this point.
 								);
 								points[baseHere+l] = normal.id;
 							}
@@ -474,13 +520,16 @@ function meshOne(data, dims) {
 								points[baseHere+l] =( vertices.push(new THREE.Vector3(cellOrigin[0]+ geom[p0][0]+( geom[p1][0]- geom[p0][0])* t
 										,cellOrigin[1]+ geom[p0][1]+( geom[p1][1]- geom[p0][1])* t
 										, cellOrigin[2]+ geom[p0][2]+( geom[p1][2]- geom[p0][2])* t )),vertices.length-1 );
+// --^-^-^-^-^-^-- END  OUTPUT POINT 2 HERE --^-^-^-^-^-^--
 						}
 						if( normal ){
+							// 'normal' in this context is a vertex reference
 							normal.adds = 0;
-							normalList.push( normals[baseHere+l] = ( normal || new THREE.Vector3(0,0,0) ) );
+							normals[baseHere+l] = normal;
 						}
 						else {
-							normalList.push( normal = normals[baseHere+l] = ( new THREE.Vector3(0,0,0) ) );
+							// for normal, just need an accumulator to smooth shade; or to compute face normal into later
+							normal = normals[baseHere+l] = ( new THREE.Vector3(0,0,0) );
 							normal.adds = 0;
 						}
 						crosses[baseHere+l] = 1;
@@ -493,20 +542,8 @@ function meshOne(data, dims) {
 				}
 			}
 		}
-	
-		if( debug_ ) {
-			function zz(v) { var s = ' 2,7,8  3,1,0  1,4,6\n';for( var y = 0; y < dim1; y++ ) { s += `y:${y}   \n`;
 
-				for( var x = 0; x < dim0; x++ ) {s += bits[(y*dim0+x)];s += "   " } s += "\n";
-
-				for( var x = 0; x < dim0; x++ ) {s += (v[(y*dim0+x)*9 + 2]?"X":"_") + (v[(y*dim0+x)*9 + 8]?"X":"_") + (v[(y*dim0+x)*9 + 7]?"X":"_");s += "   " } s += "\n";
-				for( var x = 0; x < dim0; x++ ) {s += (v[(y*dim0+x)*9 + 3]?"X":"_") + (v[(y*dim0+x)*9 + 1]?"X":"_") + (v[(y*dim0+x)*9 + 6]?"X":"_");s += "   " } s += "\n";
-				for( var x = 0; x < dim0; x++ ) {s += (v[(y*dim0+x)*9 + 0]?"X":"_") + (v[(y*dim0+x)*9 + 5]?"X":"_") + (v[(y*dim0+x)*9 + 4]?"X":"_");s += "   " } s += "\n\n"; }
-				return s;
-			}
-			console.log( "relavent computations:", zz( crosses,null), zz( points )  );
-		}
-	
+		// for all bounday crossed points, generate the faces from the intersection points.
 		for( var y = 0; y < dim1-1; y++ ) {
 			for( var x = 0; x < dim0-1; x++ ) {
 				if( !bits[x+y*dim0] ) {
@@ -515,7 +552,7 @@ function meshOne(data, dims) {
 					if( z > (dim1-2))continue;
 
 					if( !bits[(x+1)+y*dim0] && !bits[(x)+(y+1)*dim0]&& !bits[(x)+(y)*dim0+dim0*dim1]) {
-						//continue;
+						continue;
 					}
 
 				}
@@ -572,7 +609,9 @@ function meshOne(data, dims) {
 							const ai = baseOffset+fpi[tri][0];
 							const bi = baseOffset+fpi[tri][1];
 							const ci = baseOffset+fpi[tri][2];
-						
+							// ai, bi, ci are indexes into computed pointcloud layer.
+// --V-V-V-V-V-V-V-V-- GENERATE OUTPUT FACE --V-V-V-V-V-V-V-V--
+
 							if( smoothShade ) {
 								//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
 								// suggests using the angle as a scalar of the normal.
@@ -584,10 +623,7 @@ function meshOne(data, dims) {
 									const vA = normals[ai].vertBuffer;
 									const vB = normals[bi].vertBuffer;
 									const vC = normals[ci].vertBuffer;
-									const fnorm = [0,0,0];
-									const tmp = [0,0,0];
-									const a1t = [0,0,0];
-									const a2t = [0,0,0];
+
 									if( ( vA[0] === vB[0] && vA[0] === vC[0] )
 									   && ( vA[1] === vB[1] && vA[1] === vC[1] )
 									   && ( vA[2] === vB[2] && vA[2] === vC[2] ) ) {
@@ -628,8 +664,6 @@ function meshOne(data, dims) {
 										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.000001 && 
 										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.000001 )
 											angle = 2*Math.acos( clamp((a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2])/(Math.sqrt(a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2])*Math.sqrt(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) ), 1.0 ));
-											//angle = a1t.angleTo( a2t );
-										//console.log( "ai angle:", angle, fnorm );
 										normals[ai].normalBuffer[0] += fnorm[0]*angle;
 										normals[ai].normalBuffer[1] += fnorm[1]*angle;
 										normals[ai].normalBuffer[2] += fnorm[2]*angle;
@@ -642,10 +676,8 @@ function meshOne(data, dims) {
 										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.000001 && 
 										    (a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.000001 ) {
 												angle = 2*Math.acos( clamp((a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2])/(Math.sqrt(a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2])*Math.sqrt(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) ), 1.0) );
-												//angle = a1t.angleTo( a2t );
 										}
 
-										//console.log( "bi angle:", angle, fnorm );
 										normals[bi].normalBuffer[0] += fnorm[0]*angle;
 										normals[bi].normalBuffer[1] += fnorm[1]*angle;
 										normals[bi].normalBuffer[2] += fnorm[2]*angle;
@@ -659,9 +691,6 @@ function meshOne(data, dims) {
 										if( (a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2] ) >0.000001 && 
 											(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) >0.000001 )
 											angle = 2*Math.acos( clamp((a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2])/(Math.sqrt(a1t[0]*a1t[0]+a1t[1]*a1t[1]+a1t[2]*a1t[2])*Math.sqrt(a2t[0]*a2t[0]+a2t[1]*a2t[1]+a2t[2]*a2t[2] ) ), 1.0) );
-											//angle = 2 * Math.acos(clamp( (a1t[0]*a2t[0]+a1t[1]*a2t[1]+a1t[2]*a2t[2]),1))
-											//angle = a1t.angleTo( a2t );
-										//console.log( "ci angle:", angle, fnorm, a1t, a2t );
 										normals[ci].normalBuffer[0] += fnorm[0]*angle;
 										normals[ci].normalBuffer[1] += fnorm[1]*angle;
 										normals[ci].normalBuffer[2] += fnorm[2]*angle;
@@ -669,9 +698,6 @@ function meshOne(data, dims) {
 									normals[ai].adds++;
 									normals[bi].adds++;
 									normals[ci].adds++;
-									//console.log( "updated vertex normal a", ai, normals[ai].id, normals[ai].normalBuffer );
-									//console.log( "updated vertex normal b", bi, normals[bi].id, normals[bi].normalBuffer );
-									//console.log( "updated vertex normal c", ci, normals[ci].id, normals[ci].normalBuffer );
 									if( isNaN(normals[ci].normalBuffer[0]) || isNaN(normals[ci].normalBuffer[1]) || isNaN(normals[ci].normalBuffer[2]) )debugger;
 									if( isNaN(normals[bi].normalBuffer[0]) || isNaN(normals[bi].normalBuffer[1]) || isNaN(normals[bi].normalBuffer[2]) )debugger;
 									if( isNaN(normals[ai].normalBuffer[0]) || isNaN(normals[ai].normalBuffer[1]) || isNaN(normals[ai].normalBuffer[2]) )debugger;
@@ -679,8 +705,8 @@ function meshOne(data, dims) {
 									//if( normals[ci].adds >= 3 &&  !normals[ci].normalBuffer[0] && !normals[ci].normalBuffer[1] && !normals[ci].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
 									//if( normals[bi].adds >= 3 &&  !normals[bi].normalBuffer[0] && !normals[bi].normalBuffer[1] && !normals[bi].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
 									//if( normals[ai].adds >= 3 &&  !normals[ai].normalBuffer[0] && !normals[ai].normalBuffer[1] && !normals[ai].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
-									//opts.geometryHelper.addFace( points[ai], points[bi], points[ci] );
-									opts.geometryHelper.addFace( normals[ai].id, normals[bi].id, normals[ci].id );
+									opts.geometryHelper.addFace( points[ai], points[bi], points[ci] );
+									//opts.geometryHelper.addFace( normals[ai].id, normals[bi].id, normals[ci].id );
 
 								}else{
 									// sorry; in this mode, normals is just a THREEE.vector3.
@@ -698,52 +724,52 @@ function meshOne(data, dims) {
 									   continue;
 									}
 									//if( !vA || !vB || !vC ) debugger;
-									cb.subVectors(vC, vB);
-									ab.subVectors(vA, vB);
-									cb.cross(ab);
+									v_cb.subVectors(vC, vB);
+									v_ab.subVectors(vA, vB);
+									v_cb.cross(v_ab);
 							
-									if( cb.length() > 0.000001 ){
+									if( v_cb.length() > 0.000001 ){
 										// try a cross from a different side.
 									}
-									cb.normalize();
+									v_cb.normalize();
 
 									{
-										a1t.subVectors(vC,vB);
-										a2t.subVectors(vA,vB);
+										v_a1t.subVectors(vC,vB);
+										v_a2t.subVectors(vA,vB);
 										let angle = 0;
-										if( a1t.length() && a2t.length() )
-											angle = a1t.angleTo( a2t );
-										normTmp.copy(cb).multiplyScalar(angle);
-										normals[bi].add( normTmp );
+										if( v_a1t.length() && v_a2t.length() )
+											angle = v_a1t.angleTo( v_a2t );
+										v_normTmp.copy(v_cb).multiplyScalar(angle);
+										normals[bi].add( v_normTmp );
 									}
 	
 									{
-										a1t.subVectors(vB,vA);
-										a2t.subVectors(vC,vA);
+										v_a1t.subVectors(vB,vA);
+										v_a2t.subVectors(vC,vA);
 										let angle = 0;
-										if( a1t.length() > 0 && a2t.length()>0 ){
-											angle = a1t.angleTo( a2t );
+										if( v_a1t.length() > 0 && v_a2t.length()>0 ){
+											angle = v_a1t.angleTo( v_a2t );
 										}
-										normTmp.copy(cb).multiplyScalar(angle);
-										normals[ai].add( normTmp );
+										v_normTmp.copy(v_cb).multiplyScalar(angle);
+										normals[ai].add( v_normTmp );
 									}
 							
-									cb.subVectors(vA, vC);
-									ab.subVectors(vB, vC);
-									cb.cross(ab);
+									v_cb.subVectors(vA, vC);
+									v_ab.subVectors(vB, vC);
+									v_cb.cross(v_ab);
 	
-									if( cb.length() > 0.000001 ) {
-										cb.normalize();
-										a1t.subVectors(vA,vC);
-										a2t.subVectors(vB,vC);
+									if( v_cb.length() > 0.000001 ) {
+										v_cb.normalize();
+										v_a1t.subVectors(vA,vC);
+										v_a2t.subVectors(vB,vC);
 										let angle = 0;
-										if( a1t.length() > 0 && a2t.length()>0 ){
-											angle = a1t.angleTo( a2t );
+										if( a1t.length() > 0 && v_a2t.length()>0 ){
+											angle = v_a1t.angleTo( v_a2t );
 										}
-										cb.multiplyScalar(angle);
+										v_cb.multiplyScalar(angle);
 	
-										normTmp.copy(cb).multiplyScalar(angle);
-										normals[ci].add( normTmp );
+										v_normTmp.copy(v_cb).multiplyScalar(angle);
+										normals[ci].add( v_normTmp );
 									}
 								}
 							} else {
@@ -751,75 +777,65 @@ function meshOne(data, dims) {
 									const vA = normals[ai].vertBuffer;
 									const vB = normals[bi].vertBuffer;
 									const vC = normals[ci].vertBuffer;
-									let norm=[0,0,0];
-									let tmp=[0,0,0];
 									//if( !vA || !vB || !vC ) debugger;
-									norm[0] = vC[0]-vB[0];norm[1] = vC[1]-vB[1];norm[2] = vC[2]-vB[2];
+									fnorm[0] = vC[0]-vB[0];fnorm[1] = vC[1]-vB[1];fnorm[2] = vC[2]-vB[2];
 									tmp[0] = vA[0]-vB[0];tmp[1] = vA[1]-vB[1];tmp[2] = vA[2]-vB[2];
-									let a=norm[0], b = norm[1];
-									norm[0]=norm[1]*tmp[2] - norm[2]*tmp[1];
-									norm[1]=norm[2]*tmp[0] - a      *tmp[2];
-									norm[2]=a      *tmp[1] - b*tmp[0];
+									let a=fnorm[0], b = fnorm[1];
+									fnorm[0]=fnorm[1]*tmp[2] - fnorm[2]*tmp[1];
+									fnorm[1]=fnorm[2]*tmp[0] - a       *tmp[2];
+									fnorm[2]=a       *tmp[1] - b       *tmp[0];
 									let ds;
-									if( (ds=norm[0]*norm[0]+norm[1]*norm[1]+norm[2]*norm[2]) < 0.01 ){
-										norm[0] = vB[0]-vA[0];norm[1] = vB[1]-vA[1];norm[2] = vB[2]-vA[2];
+									if( (ds=fnorm[0]*fnorm[0]+fnorm[1]*fnorm[1]+fnorm[2]*fnorm[2]) < 0.01 ){
+										fnorm[0] = vB[0]-vA[0];fnorm[1] = vB[1]-vA[1];fnorm[2] = vB[2]-vA[2];
 										tmp[0] = vC[0]-vA[0];tmp[1] = vC[1]-vA[1];tmp[2] = vC[2]-vA[2];
-										let a=norm[0], b = norm[1];
-										norm[0]=norm[1]*tmp[2] - norm[2]*tmp[1];
-										norm[1]=norm[2]*tmp[0] - a*tmp[2];
-										norm[2]=a      *tmp[1] - b*tmp[0];
-										ds=norm[0]*norm[0]+norm[1]*norm[1]+norm[2]*norm[2];
+										let a=fnorm[0], b = fnorm[1];
+										fnorm[0]=fnorm[1]*tmp[2] - fnorm[2]*tmp[1];
+										fnorm[1]=fnorm[2]*tmp[0] - a       *tmp[2];
+										fnorm[2]=a       *tmp[1] - b       *tmp[0];
+										ds=fnorm[0]*fnorm[0]+fnorm[1]*fnorm[1]+fnorm[2]*fnorm[2];
 									}
 									ds = 1/Math.sqrt(ds);
-									norm[0] *= ds;norm[1] *= ds;norm[2] *= ds;
+									fnorm[0] *= ds;fnorm[1] *= ds;fnorm[2] *= ds;
 
 									opts.geometryHelper.addFace( points[ai], points[bi], points[ci]
-												, norm );
+												, fnorm );
 								}else {
 									const vA = vertices[points[ai]];
 									const vB = vertices[points[bi]];
 									const vC = vertices[points[ci]];
 									//if( !vA || !vB || !vC ) debugger;
-									cb.subVectors(vC, vB);
-									ab.subVectors(vA, vB);
-									cb.cross(ab);
+									v_cb.subVectors(vC, vB);
+									v_ab.subVectors(vA, vB);
+									v_cb.cross(v_ab);
 										
-									if( cb.length() < 0.01 ){
-										cb.subVectors(vB, vA);
-										ab.subVectors(vC, vA);
-										cb.cross(ab);
+									if( v_cb.length() < 0.01 ){
+										v_cb.subVectors(vB, vA);
+										v_ab.subVectors(vC, vA);
+										v_cb.cross(v_ab);
 									}
-									cb.normalize();
-									faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci], cb.clone() ) );
+									v_cb.normalize();
+									faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci], v_cb.clone() ) );
 								}
 							}
 						}
+// --^-^-^-^-^-^-- END GENERATE OUTPUT FACE --^-^-^-^-^-^--
 					}
 				}
 			}
 		}
 	}
-	if( smoothShade)
-		for (var i=0; i<normalList.length; ++i) {
-			// this is a lot of redundant work...
-			if( showGrid ){
-				//if( !normalList[i].normalBuffer[0] && !normalList[i].normalBuffer[1] && !normalList[i].normalBuffer[2] ) debugger;
-				//let n = normalList[i].normalBuffer;
-				//let d = n[0]*n[0]+n[1]*n[1]+n[2]*n[2];
-				//d = 1/Math.sqrt(d);
-				//n[0]*=d;n[1]*=d;n[2]*=d;
-			}else
-				;//normalList[i].normalize();
-		}
 
+	// update geometry (could wait for index.html to do this?
 	if( showGrid )
 		opts.geometryHelper.markDirty();
 
-		//stitchSpace( false );
+	// internally generate virtual padding...
+	//stitchSpace( false );
 
-		function clamp(a,b) {
-			if( a < b ) return a; return b;
-		}
+	// internal utility function to limit angle
+	function clamp(a,b) {
+		if( a < b ) return a; return b;
+	}
 }
 
 }
