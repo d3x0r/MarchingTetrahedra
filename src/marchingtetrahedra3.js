@@ -84,7 +84,6 @@ this is the vertex references on the right, and which 'vert N' applies.
 
 var MarchingTetrahedra3 = (function() {
 	// static working buffers
-	const highDef = false;
 
 	var sizes = 0;
 	const pointHolder = [null,null];
@@ -113,13 +112,12 @@ var MarchingTetrahedra3 = (function() {
 
 	// this is the running center of the faces being generated - center of the cell being computed.
 	const cellOrigin = [0,0,0];
-	// this is an offset on the whole patch; this is used for stitching additional padding
-	const patchOffset = [0,0,0];
 
 	// see next comment...
+	// the order of these MUST MATCH edgeToComp order
 	const vertToDataOrig = [
-			[ [ 2,3,6,0], [3,1,5,0], [4,6,5,0], [6,7,5,3], [0,6,5,3] ],
-			[ [ 0, 2,4,1], [3,1,7,2], [6,7,4,2], [4,7,5,1], [1,2,4,7] ],
+		[ [4,6,5,0], [3,1,5,0], [ 2,3,6,0], [6,7,5,3], [0,6,5,3] ],
+		[ [ 0,2,4,1], [4,7,5,1], [6,7,4,2], [3,1,7,2], [1,2,4,7] ],
 	];
 	
 	// these is the point orders of the tetrahedra. (first triangle in comments at top)
@@ -154,27 +152,28 @@ var MarchingTetrahedra3 = (function() {
 	const v_a2t = new THREE.Vector3();
 
 	// a tetrahedra has 6 crossing values
-	// the result of this is the index into that ordered list of intersecionts (second triangle in comments at top)
+	// the result of this is the index into that ordered list of intersections (second triangle in comments at top)
 
 	// indexed with [invert][face][0-1 tri/quad] [0-2]
+	// indexed with 'useFace'  and that is defined above in the order of validCombinations
 	const facePointIndexesOriginal = [
 			[
-				[[0,1,2]],
+				[[0,1,2]],    // vert 0
 				[[0,1,4],[0,4,5]],
 				[[0,3,4],[0,4,2]],
-				[[0,5,3]],
+				[[0,5,3]],    // vert 1
 				[[1,2,5],[1,5,3]],
-				[[1,3,4]],
-				[[2,4,5]]
+				[[1,3,4]],    // vert 2
+				[[2,4,5]]     // vert 3
 			],
 			[
-				[[1,0,2]],
+				[[1,0,2]],    // vert 0
 				[[1,0,4],[4,0,5]],
 				[[3,0,4],[4,0,2]],
-				[[5,0,3]],
+				[[5,0,3]],    // vert 1
 				[[2,1,5],[5,1,3]],
-				[[3,1,4]],
-				[[4,2,5]]
+				[[3,1,4]],    // vert 2
+				[[4,2,5]]     // vert 3
 			]
 	];
 
@@ -190,58 +189,6 @@ var MarchingTetrahedra3 = (function() {
 	var smoothShade = opts.smoothShade || false;
 	var newData = [];
 	const showGrid = opts.showGrid;
-// ---------------------- UNUSED ----------------------  doubles the data point space with halfway points.
-	if( highDef ){
-		let n = 0;
-		for( var z = 0; z < (dims[2]*2-1); z++ ){
-			if( z & 1 )
-				n -= dims[1]*dims[0];
-			for( var y = 0; y < (dims[1]*2-1); y++ ) {
-				if( y & 1 )
-					n -= dims[0];
-				for( var x = 0; x < dims[0]; x++ ){
-					if( z & 1 ){
-						if( y & 1 ){
-							newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
-								data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] )/4 );
-							if( x < dims[0]-1 )
-								newData.push( ( data[n] + data[n+dims[0]*dims[1]] +
-												data[n+dims[0]]+ data[n+dims[0]+dims[0]*dims[1]] +
-												data[n+1] + data[n+1+dims[0]*dims[1]] +
-												data[n+1+dims[0]]+ data[n+1+dims[0]+dims[0]*dims[1]]
-									)/8 );
-						}else {
-							newData.push( ( data[n] + data[n+dims[0]*dims[1]] )/2 );
-							if( x < dims[0]-1 )
-								newData.push( ( data[n] + data[n+dims[0]*dims[1]] +  data[n+1] + data[n+1+dims[0]*dims[1]]  )/4 );
-						}
-					}
-					else {
-						if( y & 1 ){
-							newData.push( ( data[n] + data[n+dims[0]] )/2 );
-							if( x < dims[0]-1 )
-								newData.push( ( data[n] + data[n+1] + data[n+dims[0]] + data[n+dims[0]*dims[1]] )/4 );
-						}else {
-							newData.push( data[n] );
-							if( x < dims[0]-1 )
-								newData.push( ( data[n] + data[n+1] )/2 );
-						}
-					}
-					n++;
-				}
-			}
-		}
-		dims = [dims[0] * 2 - 1, dims[1] * 2 - 1, dims[2] * 2 - 1];
-		data = newData;
-	}
-// --------------- END UNUSED POINT DOUBLING --------------------------------------
-
-	var stitching = false;
-	
-	// reset the patch offset.
-	patchOffset[0] = 0;
-	patchOffset[1] = 0;
-	patchOffset[2] = 0;
 
 	meshOne( data,dims );
 	return null;
@@ -249,59 +196,7 @@ var MarchingTetrahedra3 = (function() {
 
 function meshOne(data, dims) {
 
-// -------------------- Stitch Extra space on the side faces (unused) ------------------
-//  generates a new pointcloud mesh - possibly from other near pointclouds to generate mating
-//  edges - or padding arond the ouside if in isolation.
-	function stitchSpace(empty) {
-		if( stitching ) return;
-		stitching = true;
-		const ranges = [
-							[[-1,-1,-1],[dims[0],dims[1],0]],
-							[[-1,-1,dims[2]-1],[dims[0],dims[1],dims[2]]],
-							[[-1,-1,0],[dims[0],0,dims[2]-1]],
-							[[-1,dims[1]-1,0],[dims[0],dims[1],dims[2]-1]],
-
-							[[-1,0,0],[0,dims[1]-1,dims[2]-1]],
-							[[dims[0]-1,0,0],[dims[0],dims[1]-1,dims[2]-1]],
-		]
-		var cloud = [];
-		for( let r = 0; r < ranges.length; r++ ) {
-			cloud.length = 0;
-			for( let z = ranges[r][0][2]; z <= ranges[r][1][2]; z++ ){
-				for( let y = ranges[r][0][1]; y <= ranges[r][1][1]; y++ ){
-					for( let x = ranges[r][0][0]; x <= ranges[r][1][0]; x++ ){
-						if( ( x >= 0 && x < dims[0] )
-							&& ( y >= 0 && y < dims[1] )
-							&& ( z >= 0 && z < dims[2] )
-							)
-							cloud.push( data[x+y*dims[0]+z*dims[0]*dims[1]] );
-						else {
-							//cloud.push(empty?-1:500);
-
-							// this is a full stretch//
-							//cloud.push(500);
-							// this is not so great; inside surface only
-							// triangles fail.
-							//cloud.push(-500);
-
-							cloud.push(2.3 * Math.random());
-							//cloud.push(-2.3 * Math.random());
-						}
-					}
-				}
-			}
-			patchOffset[0] = ranges[r][0][0];
-			patchOffset[1] = ranges[r][0][1];
-			patchOffset[2] = ranges[r][0][2];
-			meshOne( cloud, [ranges[r][1][0]-ranges[r][0][0]+1,ranges[r][1][1]-ranges[r][0][1]+1,ranges[r][1][2]-ranges[r][0][2]+1] );
-		}
-		stitching = false;
-	}
-
-// --------------------- End Stitch Extra Space (unused) -------------------
-
 	// values input to this are in 2 planes for lower and upper values
-
 	const dim0 = dims[0];
 	const dim1 = dims[1];
 	const dim2 = dims[2];
@@ -313,20 +208,23 @@ function meshOne(data, dims) {
 	// index with [odd] [tet_of_cube] [0-5 line index]
 	// result is composite point data offset.
 	const edgeToComp = [
-		[ [ (dim0)*9+4, (dim0)*9+1, 0          , (dim0)*9+6 , 3      , 5 ]
-		, [ (1)*9+0    , 1*9+3      , 5          , 1*9+1       , 6      , 4 ]
-		, [ 2          , 7          , 1          , 8           , 6      , 3 ]
-		, [ (dim0)*9+7, 8          , (dim0)*9+6, (1)*9+2     , (1)*9+3, (1+dim0)*9+1 ]
-		, [ 3, 6, 5, 8, (1)*9+3, (dim0)*9+6]
+		[ [ 2          , 7          , 1          , 8           , 6      , 3 ]  // is only at 0
+		, [ (1)*9+0    , 1*9+3      , 5          , 1*9+1       , 6      , 4 ]  // includes +1 x
+		, [ (dim0)*9+4, (dim0)*9+1, 0          , (dim0)*9+6 , 3      , 5 ]  // includes  +1 y
+		, [ (dim0)*9+7, 8          , (dim0)*9+6, (1)*9+2     , (1)*9+3, (1+dim0)*9+1 ]  // includes +1 x +1 y
+		, [ 3, 6, 5, 8, (1)*9+3, (dim0)*9+6]  // includes +1x, +1y
 		],
 
 		[ [0, 1, 4, 3, 6, 5]
-		, [ (1)*9+0, (1+dim0)*9+1, (dim0)*9 + 4, 1*9+3, (dim0)*9+6, 5 ]
-		, [ (dim0)*9+7, 2, (dim0)*9+1, 8, 3, (dim0)*9+6 ]
 		, [ 8, 7, 6, (1)*9+2, (1)*9+1, (1)*9+3 ]
+		, [ (dim0)*9+7, 2, (dim0)*9+1, 8, 3, (dim0)*9+6 ]
+		, [ (1)*9+0, (1+dim0)*9+1, (dim0)*9 + 4, 1*9+3, (dim0)*9+6, 5 ]
 		, [ 5, 6, (1)*9+3, 3, 8, (dim0)*9+6 ]
 		],
 	]
+
+	// these are bits that are going to 0.
+	const tetMasks = [ [ 4|0, 1, 2, 4|3, 4|3 ], [ 0, 4|1, 4|2, 3, 4|3 ] ];
 
 	// this is a computed lookup from facePointIndexes ([invert][output_face_type][0-1 triangle count][0-3 triangle point index]
 	// it is actually edgeToComp[odd][tet][  FPI[invert][face_type][0-1][point indexes] ]
@@ -363,7 +261,9 @@ function meshOne(data, dims) {
 			] ] )	
 		}
 	}
+
 	for( let a = 0; a < 2; a++ ) for( let b = 0; b < 5; b++ ) for( let c = 0; c < 4; c++ ) vertToData[a][b][c] = dataOffset[vertToDataOrig[a][b][c]];
+
 	if( dim0*dim1*9 > sizes ) {
 		sizes = dim0 * dim1 * 9;
 		bits = new Uint8Array(dim0*dim1);
@@ -394,19 +294,19 @@ function meshOne(data, dims) {
 	
 		let odd = 0;
 		let zOdd = z & 1;
-		cellOrigin[2] = patchOffset[2] + z-0.5;
+		cellOrigin[2] = z-0.5;
 
 		// compute one layer (x by y) intersections (cross from inside to outside).
 		// each cell individually has 16 intersections
 		// the first cell needs 9 intersections computed; the subsequent cells providing the computation for the 7 'missing'
 		// 3 intersections per cell after the first layer can be copied; but shift in position (moving from the top to the bottom)
 		// 
-		for( var y = 0; y < dim1; y++ ) {
-			cellOrigin[1] = patchOffset[1] + y-0.5;
-			for( var x = 0; x < dim0; x++ ) {
+		for( var y = 0; y < dim1-1; y++ ) {
+			cellOrigin[1] = y-0.5;
+			for( var x = 0; x < dim0-1; x++ ) {
 				odd = (( x + y ) &1) ^ zOdd;
 	
-				cellOrigin[0] = patchOffset[0] + x-0.5;
+				cellOrigin[0] = x-0.5;
 	
 				const baseHere = (x+0 + y*dim0)*9;
 				const baseOffset = x+0 + y*dim0 + z * dim0*dim1;
@@ -416,8 +316,6 @@ function meshOne(data, dims) {
 				for( let l = 0; l < 9; l++ ) {
 					const p0 = lineArray[l][0];
 					const p1 = lineArray[l][1];
-					const data0=baseOffset+dataOffset[p0];
-					const data1=baseOffset+dataOffset[p1];
 	
 					// when we actually do layers, this matters.
 					if( z ) {
@@ -464,13 +362,16 @@ function meshOne(data, dims) {
 						crosses[baseHere+l] = 0;
 						continue;
 					}
+
+					const data0=baseOffset+dataOffset[p0];
+					const data1=baseOffset+dataOffset[p1];
 	
 					d=-data[data0]; e=-data[data1];
 	
 					if( ( d <= 0 && e >0  )|| (d > 0 && e <= 0 ) ){
 						let t;
 						let normal = null;
-						//console.log( "x, y is a cross:", (x+y*dim0)*9, crosses.length, l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` );
+						//console.log( "x, y is a cross:", x+y*dim0,(x+y*dim0)*9, crosses.length, baseOffset+l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` );
 						if( e <= 0 ) {
 							(t = -e/(d-e));
 // --V-V-V-V-V-V-V-V-- CREATE OUTPUT POINT(VERTEX) HERE --V-V-V-V-V-V-V-V--
@@ -524,19 +425,19 @@ function meshOne(data, dims) {
 						}
 						if( normal ){
 							// 'normal' in this context is a vertex reference
-							normal.adds = 0;
+							debug_ && (normal.adds = 0);
 							normals[baseHere+l] = normal;
 						}
 						else {
 							// for normal, just need an accumulator to smooth shade; or to compute face normal into later
 							normal = normals[baseHere+l] = ( new THREE.Vector3(0,0,0) );
-							normal.adds = 0;
+							debug_ && (normal.adds = 0);
 						}
 						crosses[baseHere+l] = 1;
 						bits[x+y*dim0] = 1; // set any 1 bit is set here.
 					}
 					else {
-						//console.log( "x, y is NOT cross:", (x+y*dim0)*9, crosses.length, l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` );
+						//console.log( "x,y does not cross", x+y*dim0,(x+y*dim0)*9, crosses.length, baseOffset+l, x, y, p0, p1, data0, data1, `d:${d} e:${e}` ); 
 						crosses[baseHere+l] = 0;
 					}
 				}
@@ -544,19 +445,20 @@ function meshOne(data, dims) {
 		}
 
 		// for all bounday crossed points, generate the faces from the intersection points.
-		for( var y = 0; y < dim1-1; y++ ) {
-			for( var x = 0; x < dim0-1; x++ ) {
+		for( var y = 0; y < dim1; y++ ) {
+			for( var x = 0; x < dim0; x++ ) {
+				var tetSkip = 0;
 				if( !bits[x+y*dim0] ) {
-					if( x >= (dim0-2))continue;
-					if( y >= (dim1-2))continue;
-					if( z > (dim1-2))continue;
-
-					if( !bits[(x+1)+y*dim0] && !bits[(x)+(y+1)*dim0]&& !bits[(x)+(y)*dim0+dim0*dim1]) {
+					// if nothing in x, x+1, y+1, just 1 bit in forward right wouldn't be enough.
+					if( !bits[(x+1)+y*dim0] && !bits[(x)+(y+1)*dim0] /*&& !bits[(x)+(y)*dim0+dim0*dim1]*/) {
+						//console.log( "Skip:", (x+1)+y*dim0, x, y, z );
 						continue;
 					}
-
 				}
 
+				if( x >= (dim0-1)) tetSkip |= 1;
+				if( y >= (dim1-1)) tetSkip |= 2;
+				if( z >= (dim2-1)) tetSkip |= 4;
 				const baseOffset = (x + (y*dim0))*9;
 				const dataOffset = (x + (y*dim0)) + z*dim1*dim0;
 	        		odd = (( x + y ) &1) ^ zOdd;
@@ -564,6 +466,11 @@ function meshOne(data, dims) {
 					let f;
 					let invert = 0;
 					let useFace = 0;
+					if( tetMasks[odd][tet] & tetSkip ){ 
+						continue;
+					}
+
+					// this is 'valid combinations' check.
 					if( crosses[ baseOffset+edgeToComp[odd][tet][0] ] ) {
 						//console.log( `Output: odd:${odd} tet:${tet} x:${x} y:${y} a:${JSON.stringify(a)}` );
 						if( crosses[ baseOffset+edgeToComp[odd][tet][1] ] ) {
@@ -572,31 +479,31 @@ function meshOne(data, dims) {
 								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0;
 
 							} else {
-								if( crosses[ baseOffset+edgeToComp[odd][tet][4] ] ) {
+								if( crosses[ baseOffset+edgeToComp[odd][tet][4] ] && crosses[ baseOffset+edgeToComp[odd][tet][5] ]) {
 									useFace = 2;
 									invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0 ;
 								}
 							}
 						} else {
-							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
+							if( crosses[ baseOffset+edgeToComp[odd][tet][2]] && crosses[ baseOffset+edgeToComp[odd][tet][3]] && crosses[ baseOffset+edgeToComp[odd][tet][4] ] ) {
 								useFace = 3;
 								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )?1:0  ;
-							}else {
+							}else if( crosses[ baseOffset+edgeToComp[odd][tet][3]] && crosses[ baseOffset+edgeToComp[odd][tet][5] ] ) {
 								useFace = 4;
 								invert = ( data[dataOffset+vertToData[odd][tet][1]] >= 0 )?1:0
 							}
 						}
 					} else {
 						if( crosses[ baseOffset+edgeToComp[odd][tet][1] ] ) {
-							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
+							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] && crosses[ baseOffset+edgeToComp[odd][tet][3] ] && crosses[ baseOffset+edgeToComp[odd][tet][5] ]) {
 								useFace = 5;
 								invert = ( data[dataOffset+vertToData[odd][tet][0]] >= 0 )  ?1:0
-							} else {
+							} else if( crosses[ baseOffset+edgeToComp[odd][tet][3]] && crosses[ baseOffset+edgeToComp[odd][tet][4] ] ) {
 								useFace = 6;
-       							invert = ( data[dataOffset+vertToData[odd][tet][2]] >= 0 ) ?1:0
+								invert = ( data[dataOffset+vertToData[odd][tet][2]] >= 0 ) ?1:0
 							}
 						} else {
-							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] ) {
+							if( crosses[ baseOffset+edgeToComp[odd][tet][2] ] && crosses[ baseOffset+edgeToComp[odd][tet][4]] && crosses[ baseOffset+edgeToComp[odd][tet][5] ] ) {
 								useFace = 7;
 								invert = ( data[dataOffset+vertToData[odd][tet][3]] >= 0 ) ?1:0
 							} else {
@@ -616,7 +523,6 @@ function meshOne(data, dims) {
 								//  https://stackoverflow.com/questions/45477806/general-method-for-calculating-smooth-vertex-normals-with-100-smoothness
 								// suggests using the angle as a scalar of the normal.
 								
-
 								if( opts.geometryHelper )	{
 
 									// a - b - c    c->b a->b
@@ -695,21 +601,21 @@ function meshOne(data, dims) {
 										normals[ci].normalBuffer[1] += fnorm[1]*angle;
 										normals[ci].normalBuffer[2] += fnorm[2]*angle;
 									}
-									normals[ai].adds++;
-									normals[bi].adds++;
-									normals[ci].adds++;
+									debug_ && normals[ai].adds++;
+									debug_ && normals[bi].adds++;
+									debug_ && normals[ci].adds++;
 									if( isNaN(normals[ci].normalBuffer[0]) || isNaN(normals[ci].normalBuffer[1]) || isNaN(normals[ci].normalBuffer[2]) )debugger;
 									if( isNaN(normals[bi].normalBuffer[0]) || isNaN(normals[bi].normalBuffer[1]) || isNaN(normals[bi].normalBuffer[2]) )debugger;
 									if( isNaN(normals[ai].normalBuffer[0]) || isNaN(normals[ai].normalBuffer[1]) || isNaN(normals[ai].normalBuffer[2]) )debugger;
 									
-									//if( normals[ci].adds >= 3 &&  !normals[ci].normalBuffer[0] && !normals[ci].normalBuffer[1] && !normals[ci].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
-									//if( normals[bi].adds >= 3 &&  !normals[bi].normalBuffer[0] && !normals[bi].normalBuffer[1] && !normals[bi].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
-									//if( normals[ai].adds >= 3 &&  !normals[ai].normalBuffer[0] && !normals[ai].normalBuffer[1] && !normals[ai].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
+									if( debug_ && normals[ci].adds >= 3 &&  !normals[ci].normalBuffer[0] && !normals[ci].normalBuffer[1] && !normals[ci].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
+									if( debug_ && normals[bi].adds >= 3 &&  !normals[bi].normalBuffer[0] && !normals[bi].normalBuffer[1] && !normals[bi].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
+									if( debug_ && normals[ai].adds >= 3 &&  !normals[ai].normalBuffer[0] && !normals[ai].normalBuffer[1] && !normals[ai].normalBuffer[2] ){ console.log( "zero normal:", ci, normals[ci], normals[ci].normalBuffer, normals[ci].vertBuffer );}//debugger;
 									opts.geometryHelper.addFace( points[ai], points[bi], points[ci] );
 									//opts.geometryHelper.addFace( normals[ai].id, normals[bi].id, normals[ci].id );
 
 								}else{
-									// sorry; in this mode, normals is just a THREEE.vector3.
+									// in this mode, normals is just a THREEE.vector3.
 									faces.push( f = new THREE.Face3( points[ai], points[bi], points[ci]
 												,[normals[ai],normals[bi],normals[ci]] )
 									);
@@ -828,9 +734,6 @@ function meshOne(data, dims) {
 	// update geometry (could wait for index.html to do this?
 	if( showGrid )
 		opts.geometryHelper.markDirty();
-
-	// internally generate virtual padding...
-	//stitchSpace( false );
 
 	// internal utility function to limit angle
 	function clamp(a,b) {
