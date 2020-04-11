@@ -149,7 +149,7 @@ function GeometryBuffer() {
     };
 
     buffer.copyPoint = function( p, n ) {
-	if( n && !this.copies[this.used]++ ) {
+	if( n && !this.copies[p]++ ) {
 	        this.normal[p*3 + 0] = n[0];
         	this.normal[p*3 + 1] = n[1];
 	        this.normal[p*3 + 2] = n[2];		
