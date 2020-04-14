@@ -89,8 +89,8 @@
 			}
 
 		  var mesher = meshers[ document.getElementById("mesher").value ]
-			, field  = testdata[ document.getElementById("datasource").value ]( document.getElementById("fillOutside")?.checked?-1
-			          :document.getElementById("fillInside")?.checked?1
+			, field  = testdata[ document.getElementById("datasource").value ]( document.getElementById("fillOutside").checked?-1
+			          :document.getElementById("fillInside").checked?1
 			          :0
 			 );
 
@@ -472,8 +472,8 @@
 			is.checked = true;
 
 			function updateTestData() {
-				testdata = createTestData( document.getElementById("fillOutside")?.checked?-1
-			          :document.getElementById("fillInside")?.checked?1
+				testdata = createTestData( document.getElementById("fillOutside").checked?-1
+			          :document.getElementById("fillInside").checked?1
 			          :0);
 				updateMesh();
 			}
