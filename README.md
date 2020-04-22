@@ -72,7 +72,7 @@ to just 1 if case , and its sub-cases...
 
 ## Inflation
 
-![inflation](src/images/MarchingTet-Scaling.png )
+![inflation](src/MarchingTet-Scaling.png )
 
 The point cloud can have a scalar applied to inside/outside values to 'inflate' the mesh...
 
