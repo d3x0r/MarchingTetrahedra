@@ -54,7 +54,7 @@
 		<p>Vertex count: <input type="text" id="vertcount" value="0"> </p>
 		<p>Face count: <input type="text" id="facecount" value="0"> </p>
 		<p>(Approx.) Time:<input type="text" id="meshtime" value="0"> </p>
-		<p>Inflation:<input type="range" id="inflation" value="50"> </p>
+		<p>Inflation:<input type="range" id="inflation" value="50"> 0:<input type="range" id="zeroLevel" value="50"> <span id="zeroValue">0</span></p>
 		<p>Maximize: <input type="checkbox" id="maximize" value="checked"> - Minimize: <input type="checkbox" id="minimize" value="checked"></p>
 		<p>Outside: <input type="radio" name="filler"  id="fillOutside" value="checked"> Inside: <input type="radio" name="filler"  id="fillInside" value="checked"> - Open: <input type="radio" name="filler" id="fillOpen" value="checked"></p>
 	  </div>
@@ -77,7 +77,9 @@
 
 		  scene.remove( surfacemesh );
 		  scene.remove( wiremesh );
-
+		         const tmp = document.getElementById( "zeroLevel");
+			const zeroLevel = 6*((tmp.value) / 100) -3.0;
+			document.getElementById( "zeroValue").textContent = zeroLevel;
 	  //Create surface mesh
 			if( document.getElementById( "showGrid").checked) {
 				var geometryHelper = THREE.GridGeometryBuffer();
@@ -111,7 +113,7 @@
 			for( var z = 0; z < field.dims[2]; z++ ) {
 				for( var y = 0; y < field.dims[1]; y++ ) {
 					for( var x = 0; x < field.dims[0]; x++ ) {
-						var a = field.data[n];
+						var a = field.data[n] + zeroLevel;
 						if( a > 0 ) {
 							if( minimize ) {
 								newData.push( 500 );
@@ -138,6 +140,7 @@
 		  smoothShade : document.getElementById( "smoothShade" ).checked,
 		  showGrid : document.getElementById( "showGrid").checked,
 		  geometryHelper : geometryHelper,
+                  zeroLevel : zeroLevel,
 		} );
 	  var end = (new Date()).getTime();
 
@@ -451,6 +454,8 @@
 
 			var is;
 			is = document.getElementById( "inflation" );
+			is.oninput = updateMesh;
+			is = document.getElementById( "zeroLevel" );
 			is.oninput = updateMesh;
 			is = document.getElementById( "minimize" );
 			is.onchange = updateMesh;
