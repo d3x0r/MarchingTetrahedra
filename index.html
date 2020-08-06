@@ -54,7 +54,7 @@
 		<p>Vertex count: <input type="text" id="vertcount" value="0"> </p>
 		<p>Face count: <input type="text" id="facecount" value="0"> </p>
 		<p>(Approx.) Time:<input type="text" id="meshtime" value="0"> </p>
-		<p>Inflation:<input type="range" id="inflation" value="50"> 0:<input type="range" id="zeroLevel" value="50"> <span id="zeroValue">0</span></p>
+		<p>Inflation:<input type="range" id="inflation" value="50"> 0:<input type="range" id="zeroLevel" min=0 max=1000 value="500"> <span id="zeroValue">0</span></p>
 		<p>Maximize: <input type="checkbox" id="maximize" value="checked"> - Minimize: <input type="checkbox" id="minimize" value="checked"></p>
 		<p>Outside: <input type="radio" name="filler"  id="fillOutside" value="checked"> Inside: <input type="radio" name="filler"  id="fillInside" value="checked"> - Open: <input type="radio" name="filler" id="fillOpen" value="checked"></p>
 	  </div>
@@ -78,7 +78,7 @@
 		  scene.remove( surfacemesh );
 		  scene.remove( wiremesh );
 		         const tmp = document.getElementById( "zeroLevel");
-			const zeroLevel = 6*((tmp.value) / 100) -3.0;
+			const zeroLevel = 6*((tmp.value) / 1000) -3.0;
 			document.getElementById( "zeroValue").textContent = zeroLevel;
 	  //Create surface mesh
 			if( document.getElementById( "showGrid").checked) {
